@@ -908,6 +908,11 @@
           </div>
         </div>
         <div class="field">
+          <div class="field-label col-blue"><span class="dot bg-blue"></span>Data de início</div>
+          <input type="date" id="bicoDataInicio" required>
+          <p style="font-size:.72rem;color:var(--muted);margin-top:6px;">Data em que o bico começa a valer de fato — não a data em que você está cadastrando.</p>
+        </div>
+        <div class="field">
           <div class="field-label col-purple"><span class="dot bg-purple"></span>Dias da semana</div>
           <div class="day-chip-row" id="bicoDias">
             <button type="button" class="day-chip" data-dia="DOM">Dom</button>
@@ -2692,6 +2697,11 @@ var BicoFixoModule = (function () {
   var bicos = loadStorage();
 
   function fmtMoeda(v) { return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function fmtDataBR(isoDate) {
+    if (!isoDate) return '—';
+    var p = isoDate.split('-');
+    return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : isoDate;
+  }
   function estimativaMensal(valor, numDias) { return (parseFloat(valor) || 0) * (numDias || 0) * SEMANAS_POR_MES; }
 
   // ── Classifica o período (dia/noite) a partir do horário de início do bico ──
@@ -2846,12 +2856,14 @@ var BicoFixoModule = (function () {
         : '';
       var obsHtml = b.observacao ? '<div class="bico-item-obs">&#x1F4DD; ' + escHtml(b.observacao) + '</div>' : '';
       var est = estimativaMensal(b.valor, (b.dias || []).length);
+      var dataInicioTxt = b.dataInicio ? fmtDataBR(b.dataInicio) : '—';
       return '<div class="bico-item ' + (b.ativo ? '' : 'inativo') + '" data-id="' + b.id + '">' +
         '<div class="bico-item-top">' +
           '<span class="bico-item-title">&#x1F464; ' + escHtml(b.colaborador || '—') + '<span class="posto-sep">&middot;</span>&#x1F4CD; ' + escHtml(b.posto || '—') + '</span>' +
           '<span class="bico-status-badge ' + (b.ativo ? 'ativo' : 'inativo') + '">' + (b.ativo ? 'Ativo' : 'Inativo') + '</span>' +
         '</div>' +
         '<div class="bico-item-info">&#x1F550; ' + escHtml(b.horario || '—') + '</div>' +
+        '<div class="bico-item-info">&#x1F4C5; Início: ' + dataInicioTxt + '</div>' +
         '<div class="bico-item-info">&#x1F4B0; ' + fmtMoeda(b.valor) + ' / diária &nbsp;&middot;&nbsp; <strong>' + fmtMoeda(est) + '</strong> estimado/mês</div>' +
         diasHtml + obsHtml +
         '<div class="bico-item-actions">' +
@@ -2861,11 +2873,22 @@ var BicoFixoModule = (function () {
     }).join('');
   }
 
-  function refresh() { popularSelects(); renderSummary(); renderLista(); }
+  function refresh() {
+    popularSelects(); renderSummary(); renderLista();
+    if (!editandoId && !document.getElementById('bicoDataInicio').value) {
+      document.getElementById('bicoDataInicio').value = hojeISO();
+    }
+  }
+
+  function hojeISO() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
 
   function limparForm() {
     document.getElementById('bicoForm').reset();
     document.getElementById('bicoAtivo').checked = true;
+    document.getElementById('bicoDataInicio').value = hojeISO();
     diasSelecionados = [];
     renderDiaChips();
     atualizarEstimativa();
@@ -2888,6 +2911,7 @@ var BicoFixoModule = (function () {
     document.getElementById('bicoValor').value = b.valor || '';
     document.getElementById('bicoObservacao').value = b.observacao || '';
     document.getElementById('bicoAtivo').checked = !!b.ativo;
+    document.getElementById('bicoDataInicio').value = b.dataInicio || hojeISO();
     diasSelecionados = (b.dias || []).slice();
     renderDiaChips();
     atualizarEstimativa();
@@ -2964,12 +2988,16 @@ var BicoFixoModule = (function () {
     var colaborador = document.getElementById('bicoColaborador').value;
     var posto = document.getElementById('bicoPosto').value;
     var horario = document.getElementById('bicoHorario').value.trim();
+    var dataInicio = document.getElementById('bicoDataInicio').value;
     var valor = document.getElementById('bicoValor').value;
     var observacao = document.getElementById('bicoObservacao').value.trim();
     var ativo = document.getElementById('bicoAtivo').checked;
 
     if (!colaborador || !posto || !horario) {
       showToast('⚠️ Preencha colaborador, posto e horário.', 'error'); return;
+    }
+    if (!dataInicio) {
+      showToast('⚠️ Informe a data de início do bico.', 'error'); return;
     }
     if (!diasSelecionados.length) {
       showToast('⚠️ Selecione ao menos um dia da semana.', 'error'); return;
@@ -2985,7 +3013,7 @@ var BicoFixoModule = (function () {
       var idx = bicos.findIndex(function (b) { return b.id === editandoId; });
       if (idx !== -1) {
         bicos[idx] = Object.assign({}, bicos[idx], {
-          colaborador: colaborador, posto: posto, horario: horario,
+          colaborador: colaborador, posto: posto, horario: horario, dataInicio: dataInicio,
           valor: parseFloat(valor) || 0, dias: diasSelecionados.slice(),
           observacao: observacao || null, ativo: ativo
         });
@@ -2993,7 +3021,7 @@ var BicoFixoModule = (function () {
       showToast('✅ Bico fixo atualizado.', 'success');
     } else {
       bicos.push({
-        id: gerarId(), colaborador: colaborador, posto: posto, horario: horario,
+        id: gerarId(), colaborador: colaborador, posto: posto, horario: horario, dataInicio: dataInicio,
         valor: parseFloat(valor) || 0, dias: diasSelecionados.slice(),
         observacao: observacao || null, ativo: ativo, criadoEm: new Date().toISOString()
       });
@@ -3044,6 +3072,7 @@ var BicoFixoModule = (function () {
   };
 
   atualizarEstimativa();
+  document.getElementById('bicoDataInicio').value = hojeISO();
 
   return { refresh: refresh };
 }());
@@ -3434,6 +3463,7 @@ var AlertasModule = (function () {
   var DIA_LABEL  = { DOM: 'Dom', SEG: 'Seg', TER: 'Ter', QUA: 'Qua', QUI: 'Qui', SEX: 'Sex', SAB: 'Sáb' };
   var DEFAULT_ENTRADA_DIA   = '07:00';
   var DEFAULT_ENTRADA_NOITE = '18:00';
+  var TOLERANCIA_ALERTA_MIN = 5; // só considera pendente 5min após o horário configurado
 
   // ── Persistência (localStorage + FT_Store + fila de sync Firebase) ──
   function loadJSON(key, fallback) {
@@ -3464,6 +3494,16 @@ var AlertasModule = (function () {
   function horaAtualStr() { var d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
   function diaSemanaKey(d) { return DIA_ORDEM[d.getDay()]; }
   function addDias(d, n) { var r = new Date(d); r.setDate(r.getDate() + n); return r; }
+
+  // ── Soma minutos a um horário "HH:MM" (com wrap de 24h) — usado pra dar
+  //    tolerância antes do alerta de posto sem FT disparar. ──
+  function somarMinutosHorario(hhmm, minutos) {
+    var m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm || '').trim());
+    if (!m) return hhmm;
+    var total = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + minutos;
+    total = ((total % 1440) + 1440) % 1440;
+    return pad(Math.floor(total / 60)) + ':' + pad(total % 60);
+  }
 
   function regraAplicaHoje(regra, data) {
     if (!regra || regra === 'todos') return true;
@@ -3766,6 +3806,7 @@ var AlertasModule = (function () {
       if (!b.ativo) return false;
       if ((b.posto || '').trim().toLowerCase() !== nomeNorm) return false;
       if ((b.dias || []).indexOf(diaKey) === -1) return false;
+      if (b.dataInicio && dataAlvoStr < b.dataInicio) return false;
       return classificarTurno(b.horario) === periodo;
     });
   }
@@ -3803,7 +3844,7 @@ var AlertasModule = (function () {
           // ── Turno Dia ──
           if (p.ativoDia && config.diaAtivo) {
             var entradaDia = p.escalaDia[diaRefKey] || DEFAULT_ENTRADA_DIA;
-            var jaPassouDia = ehHoje ? (horaHoje >= entradaDia) : true;
+            var jaPassouDia = ehHoje ? (horaHoje >= somarMinutosHorario(entradaDia, TOLERANCIA_ALERTA_MIN)) : true;
             if (entradaDia && jaPassouDia) {
               var chaveDia = p.id + '_dia_' + dataRefStr;
               if (forcarIgnorarCiente || !estaCienteOuAdiado(chaveDia, agoraRef)) {
@@ -3821,7 +3862,7 @@ var AlertasModule = (function () {
           // ── Turno Noite ──
           if (p.ativoNoite && config.noiteAtivo) {
             var entradaNoite = p.escalaNoite[diaRefKey] || DEFAULT_ENTRADA_NOITE;
-            var jaPassouNoite = ehHoje ? (horaHoje >= entradaNoite) : true;
+            var jaPassouNoite = ehHoje ? (horaHoje >= somarMinutosHorario(entradaNoite, TOLERANCIA_ALERTA_MIN)) : true;
             if (entradaNoite && jaPassouNoite) {
               var chaveNoite = p.id + '_noite_' + dataRefStr;
               if (forcarIgnorarCiente || !estaCienteOuAdiado(chaveNoite, agoraRef)) {
