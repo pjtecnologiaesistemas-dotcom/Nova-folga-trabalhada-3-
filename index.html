@@ -76,8 +76,25 @@
     gap: 10px;
   }
   header h1 .icon { font-size: 1.5rem; }
+  #currentTabLabel {
+    margin-top: 6px; font-family: 'Exo 2', sans-serif; font-size: .72rem; font-weight: 700;
+    letter-spacing: .4px; text-transform: uppercase; color: var(--accent1);
+  }
 
-  #header-badges { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; }
+  /* ── Opções empilhadas dentro do menu de módulos ── */
+  #header-badges {
+    display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+  }
+  .drawer-handle-label {
+    font-family: 'Exo 2', sans-serif; font-size: .72rem; font-weight: 800; letter-spacing: .6px;
+    text-transform: uppercase; color: var(--muted); text-align: center; margin: 16px 0 4px;
+    padding-top: 14px; padding-bottom: 10px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  }
+  #header-badges .btn-novo-ciclo, #header-badges .badge-auto,
+  #header-badges #sync-status, #header-badges #pending-badge, #header-badges #diag-sync-btn {
+    width: 100%; justify-content: center; box-sizing: border-box; min-height: 44px;
+    font-size: .8rem; padding: 10px 14px;
+  }
 
   .btn-novo-ciclo {
     border: none; border-radius: 20px; cursor: pointer;
@@ -140,6 +157,55 @@
   }
   .tab-btn.active { background: linear-gradient(135deg, rgba(247,183,49,.15) 0%, rgba(253,150,68,.1) 100%); border-color: var(--accent1); color: var(--accent1); box-shadow: 0 0 0 2px rgba(247,183,49,.12); }
   .tab-btn:not(.active):hover { border-color: var(--muted); color: var(--text); }
+
+  /* ── Menu de módulos (cards) — atalho no canto superior direito ── */
+  #btnMenuCards {
+    position: absolute; top: 14px; right: 16px; z-index: 9560;
+    width: 38px; height: 38px; border-radius: 11px; border: 1.5px solid var(--border);
+    background: rgba(255,255,255,.04); cursor: pointer;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px;
+    align-content: center; justify-content: center; padding: 8px;
+    transition: border-color .2s, background .2s;
+  }
+  #btnMenuCards span { width: 4px; height: 4px; border-radius: 50%; background: var(--muted); transition: background .2s; }
+  #btnMenuCards:hover { border-color: var(--accent1); background: rgba(247,183,49,.08); }
+  #btnMenuCards:hover span { background: var(--accent1); }
+  #btnMenuCards.open { border-color: var(--accent1); background: rgba(247,183,49,.12); }
+  #btnMenuCards.open span { background: var(--accent1); }
+
+  #cardMenuBackdrop {
+    position: fixed; inset: 0; background: rgba(6,9,16,.6); backdrop-filter: blur(2px);
+    z-index: 9640; opacity: 0; pointer-events: none; transition: opacity .25s;
+  }
+  #cardMenuBackdrop.show { opacity: 1; pointer-events: all; }
+
+  #cardMenuPanel {
+    position: fixed; top: 68px; right: 14px; left: 14px; margin: 0 auto; max-width: 460px;
+    max-height: calc(100vh - 88px); overflow-y: auto;
+    z-index: 9650; background: linear-gradient(160deg, #1a2133 0%, #0f1624 100%);
+    border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.55);
+    padding: 16px; opacity: 0; transform: translateY(-14px) scale(.97); pointer-events: none;
+    transition: opacity .22s ease, transform .22s ease;
+  }
+  #cardMenuPanel.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: all; }
+
+  .card-menu-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (max-width: 460px) { .card-menu-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  #cardMenuPanel .menu-card {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; min-width: 0; background: rgba(255,255,255,.03); border: 1.5px solid var(--border);
+    border-radius: 16px; padding: 16px 8px; cursor: pointer; font-family: 'Exo 2', sans-serif;
+    color: var(--muted); font-size: .68rem; font-weight: 700; letter-spacing: .2px;
+    text-transform: uppercase; text-align: center; transition: all .2s;
+  }
+  #cardMenuPanel .menu-card-icon { font-size: 1.5rem; line-height: 1; }
+  #cardMenuPanel .menu-card:hover { border-color: var(--muted); color: var(--text); transform: translateY(-2px); }
+  #cardMenuPanel .menu-card.active {
+    border-color: var(--accent1); color: var(--accent1);
+    background: linear-gradient(135deg, rgba(247,183,49,.16) 0%, rgba(253,150,68,.08) 100%);
+    box-shadow: 0 0 0 1px rgba(247,183,49,.25), 0 8px 22px rgba(247,183,49,.18);
+  }
 
   .tab-panel { display: block; }
   .tab-panel.hidden { display: none; }
@@ -558,6 +624,26 @@
 
 <header id="main-header">
   <h1><span class="icon">&#x1F4BC;</span> Nova Folga Trabalhada <span style="color:var(--accent1)">FT</span></h1>
+  <div id="currentTabLabel">&#x1F4CB; Nova FT</div>
+  <button type="button" id="btnMenuCards" title="Menu de módulos" aria-label="Abrir menu de módulos" aria-expanded="false" aria-controls="cardMenuPanel">
+    <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+  </button>
+</header>
+
+<div id="cardMenuBackdrop"></div>
+<div id="cardMenuPanel" role="menu" aria-label="Menu de módulos">
+  <div class="card-menu-grid">
+    <button type="button" class="tab-btn menu-card active" data-tab="tab-ft"><span class="menu-card-icon">&#x1F4CB;</span>Nova FT</button>
+    <button type="button" class="tab-btn menu-card" data-tab="tab-cadastros"><span class="menu-card-icon">&#x1F5C2;&#xFE0F;</span>Cadastros</button>
+    <button type="button" class="tab-btn menu-card" data-tab="tab-dashboard"><span class="menu-card-icon">&#x1F4CA;</span>Dashboard</button>
+    <button type="button" class="tab-btn menu-card" data-tab="tab-geral"><span class="menu-card-icon">&#x1F30D;</span>Geral</button>
+    <button type="button" class="tab-btn menu-card" data-tab="tab-historico"><span class="menu-card-icon">&#x1F4DC;</span>Histórico</button>
+    <button type="button" class="tab-btn menu-card" data-tab="tab-bico"><span class="menu-card-icon">&#x1F4A0;</span>Bico Fixo</button>
+    <button type="button" class="tab-btn menu-card" data-tab="tab-pagamentos"><span class="menu-card-icon">&#x1F4B3;</span>Pagamentos</button>
+    <button type="button" class="tab-btn menu-card" data-tab="tab-alertas"><span class="menu-card-icon">&#x1F514;</span>Alertas</button>
+  </div>
+
+  <div class="drawer-handle-label">Opções</div>
   <div id="header-badges">
     <button class="btn-novo-ciclo" id="btnNovoCiclo">&#x1F504; Novo Ciclo</button>
     <button class="btn-novo-ciclo" id="btnAbrirAlertas" style="background:rgba(69,170,242,.15);border-color:rgba(69,170,242,.5);color:var(--accent3);">&#x2699;&#xFE0F; Alertas</button>
@@ -566,7 +652,7 @@
     <span id="pending-badge" title="Toque para ver por que estas operações não sincronizaram"><span>&#x23F3; <span id="pending-count">0</span> pendente(s)</span></span>
     <span id="diag-sync-btn" title="Abrir diagnóstico de sincronização">&#x1F527; Diagnóstico</span>
   </div>
-</header>
+</div>
 
 <div id="diag-sync-panel">
   <div class="diag-head"><strong>&#x1F527; Diagnóstico de Sincronização</strong><span class="diag-close" id="diagClose">Fechar</span></div>
@@ -574,16 +660,6 @@
 </div>
 
 <div class="tabs-wrapper">
-  <div class="tab-nav">
-    <button class="tab-btn active" data-tab="tab-ft">&#x1F4CB; Nova FT</button>
-    <button class="tab-btn" data-tab="tab-cadastros">&#x1F5C2;&#xFE0F; Cadastros</button>
-    <button class="tab-btn" data-tab="tab-dashboard">&#x1F4CA; Dashboard</button>
-    <button class="tab-btn" data-tab="tab-geral">&#x1F30D; Geral</button>
-    <button class="tab-btn" data-tab="tab-historico">&#x1F4DC; Histórico</button>
-    <button class="tab-btn" data-tab="tab-bico">&#x1F4A0; Bico Fixo</button>
-    <button class="tab-btn" data-tab="tab-pagamentos">&#x1F4B3; Pagamentos</button>
-    <button class="tab-btn" data-tab="tab-alertas">&#x1F514; Alertas</button>
-  </div>
 
   <!-- ABA: NOVA FT -->
   <div class="tab-panel" id="tab-ft">
@@ -1605,14 +1681,56 @@ window.FT_ensureLib = function (checkFn, sources, onReady, onFail) {
    ════════════════════════════════════════════════════════════ */
 (function () {
   var btns = document.querySelectorAll('.tab-btn');
+  var label = document.getElementById('currentTabLabel');
   btns.forEach(function (btn) {
     btn.addEventListener('click', function () {
       btns.forEach(function (b) { b.classList.remove('active'); });
       btn.classList.add('active');
       document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.add('hidden'); });
       document.getElementById(btn.dataset.tab).classList.remove('hidden');
+      if (label) label.innerHTML = btn.innerHTML;
       if (window.FT_onTabShow) window.FT_onTabShow(btn.dataset.tab);
     });
+  });
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO 4B — MENU DE MÓDULOS (cards, atalho superior direito)
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  var btn = document.getElementById('btnMenuCards');
+  var panel = document.getElementById('cardMenuPanel');
+  var backdrop = document.getElementById('cardMenuBackdrop');
+  if (!btn || !panel || !backdrop) return;
+
+  function openMenu() {
+    panel.classList.add('open');
+    backdrop.classList.add('show');
+    btn.classList.add('open');
+    btn.setAttribute('aria-expanded', 'true');
+  }
+  function closeMenu() {
+    panel.classList.remove('open');
+    backdrop.classList.remove('show');
+    btn.classList.remove('open');
+    btn.setAttribute('aria-expanded', 'false');
+  }
+  btn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (panel.classList.contains('open')) closeMenu(); else openMenu();
+  });
+  backdrop.addEventListener('click', closeMenu);
+  panel.querySelectorAll('.menu-card').forEach(function (card) {
+    card.addEventListener('click', closeMenu);
+  });
+  var opcoes = document.getElementById('header-badges');
+  if (opcoes) {
+    opcoes.addEventListener('click', function (e) {
+      if (e.target.closest('button, span')) closeMenu();
+    });
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeMenu();
   });
 }());
 
