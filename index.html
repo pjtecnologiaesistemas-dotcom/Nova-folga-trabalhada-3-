@@ -935,6 +935,20 @@
 
   <!-- ABA: BICO FIXO -->
   <div class="tab-panel hidden" id="tab-bico">
+    <div class="cadastro-section">
+      <div class="hist-filters-row">
+        <div>
+          <label>Período</label>
+          <select id="bicoFiltroPeriodo">
+            <option value="mes" selected>Este mês</option>
+            <option value="7d">Últimos 7 dias</option>
+            <option value="30d">Últimos 30 dias</option>
+            <option value="todos">Todos os períodos</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
     <div class="bico-summary">
       <div class="bico-summary-card">
         <div class="bico-summary-value col-green" id="bicoTotalAtivos">0</div>
@@ -942,7 +956,7 @@
       </div>
       <div class="bico-summary-card">
         <div class="bico-summary-value col-purple" id="bicoValorMensal">R$ 0,00</div>
-        <div class="bico-summary-label" id="bicoValorMensalLabel">Valor total</div>
+        <div class="bico-summary-label" id="bicoValorMensalLabel">Valor real do período</div>
       </div>
     </div>
 
@@ -2771,6 +2785,61 @@ var BicoFixoModule = (function () {
   }
   function estimativaMensal(valor, numDias) { return (parseFloat(valor) || 0) * (numDias || 0) * SEMANAS_POR_MES; }
 
+  // ── Valor REAL do período (não estimativa): conta quantos dias já
+  //    efetivamente ocorreram dentro do período filtrado — respeitando a
+  //    data de início do bico e nunca contando além de hoje — e multiplica
+  //    pela diária. Diferente da estimativa mensal, que é só uma projeção
+  //    fixa (dias/semana × 4.345), aqui é a ocorrência real calendário a
+  //    calendário. ──
+  var DIA_ORDEM_IDX = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB']; // igual Date#getDay()
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function paraYMD(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function ymdParaData(ymd) {
+    var p = String(ymd || '').split('-');
+    if (p.length !== 3) return null;
+    var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function limitesPeriodo(periodo) {
+    var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    var inicio;
+    if (periodo === 'mes') { inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1); }
+    else if (periodo === '7d') { inicio = new Date(hoje); inicio.setDate(inicio.getDate() - 6); }
+    else if (periodo === '30d') { inicio = new Date(hoje); inicio.setDate(inicio.getDate() - 29); }
+    else { inicio = null; } // 'todos' — sem piso, respeita só a data de início do bico
+    return { inicio: inicio, fim: hoje };
+  }
+
+  function contarOcorrenciasReais(bico, periodo) {
+    var lim = limitesPeriodo(periodo);
+    var inicioBico = ymdParaData(bico.dataInicio);
+    var cursor = inicioBico && (!lim.inicio || inicioBico > lim.inicio) ? inicioBico : lim.inicio;
+    if (!cursor) cursor = inicioBico; // sem data de início e período 'todos' — não dá pra contar, cai pro null abaixo
+    if (!cursor || cursor > lim.fim) return 0;
+    var dias = bico.dias || [];
+    if (!dias.length) return 0;
+    var count = 0;
+    var d = new Date(cursor);
+    while (d <= lim.fim) {
+      if (dias.indexOf(DIA_ORDEM_IDX[d.getDay()]) !== -1) count++;
+      d.setDate(d.getDate() + 1);
+    }
+    return count;
+  }
+
+  function valorRealPeriodo(bico, periodo) {
+    return (parseFloat(bico.valor) || 0) * contarOcorrenciasReais(bico, periodo);
+  }
+
+  function labelPeriodo(periodo) {
+    if (periodo === '7d') return 'Últimos 7 dias';
+    if (periodo === '30d') return 'Últimos 30 dias';
+    if (periodo === 'todos') return 'Todos os períodos';
+    return 'Este mês';
+  }
+
   // ── Classifica o período (dia/noite) a partir do horário de início do bico ──
   function classificarPeriodoBico(horarioStr) {
     var m = /^(\d{1,2}):/.exec(String(horarioStr || '').trim());
@@ -2899,15 +2968,14 @@ var BicoFixoModule = (function () {
   function renderSummary() {
     var filtrados = getFiltrados();
     var ativosFiltrados = filtrados.filter(function (b) { return b.ativo; });
-    var totalValor = ativosFiltrados.reduce(function (acc, b) { return acc + estimativaMensal(b.valor, (b.dias || []).length); }, 0);
+    var periodo = document.getElementById('bicoFiltroPeriodo').value;
+    var totalValor = ativosFiltrados.reduce(function (acc, b) { return acc + valorRealPeriodo(b, periodo); }, 0);
 
     document.getElementById('bicoTotalAtivos').textContent = ativosFiltrados.length;
     document.getElementById('bicoValorMensal').textContent = fmtMoeda(totalValor);
 
     var colabFiltro = document.getElementById('bicoFiltroColaborador').value;
-    document.getElementById('bicoValorMensalLabel').textContent = colabFiltro
-      ? 'A receber — ' + colabFiltro
-      : 'Valor total';
+    document.getElementById('bicoValorMensalLabel').textContent = (colabFiltro ? 'Real — ' + colabFiltro : 'Valor real') + ' · ' + labelPeriodo(periodo);
   }
 
   function getFiltrados() {
@@ -2938,6 +3006,8 @@ var BicoFixoModule = (function () {
         : '';
       var obsHtml = b.observacao ? '<div class="bico-item-obs">&#x1F4DD; ' + escHtml(b.observacao) + '</div>' : '';
       var est = estimativaMensal(b.valor, (b.dias || []).length);
+      var periodoAtual = document.getElementById('bicoFiltroPeriodo').value;
+      var real = valorRealPeriodo(b, periodoAtual);
       var dataInicioTxt = b.dataInicio ? fmtDataBR(b.dataInicio) : '—';
       return '<div class="bico-item ' + (b.ativo ? '' : 'inativo') + '" data-id="' + b.id + '">' +
         '<div class="bico-item-top">' +
@@ -2946,7 +3016,8 @@ var BicoFixoModule = (function () {
         '</div>' +
         '<div class="bico-item-info">&#x1F550; ' + escHtml(b.horario || '—') + '</div>' +
         '<div class="bico-item-info">&#x1F4C5; Início: ' + dataInicioTxt + '</div>' +
-        '<div class="bico-item-info">&#x1F4B0; ' + fmtMoeda(b.valor) + ' / diária &nbsp;&middot;&nbsp; <strong>' + fmtMoeda(est) + '</strong> estimado/mês</div>' +
+        '<div class="bico-item-info">&#x1F4B0; ' + fmtMoeda(b.valor) + ' / diária &nbsp;&middot;&nbsp; estimativa mensal: <strong>' + fmtMoeda(est) + '</strong></div>' +
+        '<div class="bico-item-info">&#x2705; Real (' + labelPeriodo(periodoAtual) + '): <strong>' + fmtMoeda(real) + '</strong></div>' +
         diasHtml + obsHtml +
         '<div class="bico-item-actions">' +
           '<button class="btn-edit-item" data-id="' + b.id + '" title="Editar">&#x270F;&#xFE0F;</button>' +
@@ -3130,6 +3201,7 @@ var BicoFixoModule = (function () {
   document.getElementById('bicoFiltroStatus').addEventListener('change', function () { renderSummary(); renderLista(); });
   document.getElementById('bicoFiltroPosto').addEventListener('change', function () { renderSummary(); renderLista(); });
   document.getElementById('bicoFiltroColaborador').addEventListener('change', function () { renderSummary(); renderLista(); });
+  document.getElementById('bicoFiltroPeriodo').addEventListener('change', function () { renderSummary(); renderLista(); });
 
   document.getElementById('bicoLista').addEventListener('click', function (e) {
     var editBtn = e.target.closest('.btn-edit-item');
