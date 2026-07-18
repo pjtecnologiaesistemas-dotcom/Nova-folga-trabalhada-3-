@@ -1454,55 +1454,79 @@
 (function () {
   'use strict';
 
-  function waitFirebaseAndInit(tries) {
+  var jaIniciado = false;
+  var listenerRetryMs = 4000;
+  var MAX_RETRY_MS = 30000;
+
+  function esperarSDK(cb, tries) {
     tries = tries || 0;
-
-    var FIREBASE_CONFIG = window.FT_getFirebaseConfig ? window.FT_getFirebaseConfig() : null;
-    if (!FIREBASE_CONFIG) {
-      // Sem credenciais configuradas ainda — a tela de Configuração Inicial cuida disso.
-      return;
-    }
-
-    if (typeof firebase === 'undefined') {
-      if (tries > 40) { console.warn('[Firebase] SDK não carregou — operando em modo local.'); return; }
-      setTimeout(function () { waitFirebaseAndInit(tries + 1); }, 250);
-      return;
-    }
-    try {
-      var app = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(FIREBASE_CONFIG);
-      var db = firebase.firestore();
-      var DOC_REF = db.collection('ft_app_data').doc('main');
-
-      // Grava cada entrada da fila no documento único (mesma estratégia do sistema original)
-      SyncEngine.setRemote(function (entry) {
-        var update = {};
-        update[entry.store] = entry.payload;
-        return DOC_REF.set(update, { merge: true }).then(function () { return true; });
-      });
-
-      // Listener em tempo real: aplica alterações vindas de outros dispositivos
-      DOC_REF.onSnapshot(function (snap) {
-        if (!snap.exists) return;
-        var data = snap.data() || {};
-        ['ft_colaboradores', 'ft_postos', 'ft_registros', 'ft_bico_fixo'].forEach(function (key) {
-          if (data[key] === undefined) return;
-          var local = FT_Store.getSync(key);
-          if (JSON.stringify(local) !== JSON.stringify(data[key])) {
-            localStorage.setItem(key, JSON.stringify(data[key]));
-            FT_Store.set(key, data[key]);
-            if (window.FT_onRemoteUpdate) window.FT_onRemoteUpdate(key, data[key]);
-          }
-        });
-      }, function (err) {
-        SyncEngine._lastSyncError = err.message;
-        SyncEngine.logDiag('❌ listener: ' + err.message);
-      });
-    } catch (e) {
-      console.error('[Firebase] Erro na inicialização:', e);
-    }
+    if (typeof firebase !== 'undefined') { cb(); return; }
+    if (tries > 40) { console.warn('[Firebase] SDK não carregou — operando em modo local.'); return; }
+    setTimeout(function () { esperarSDK(cb, tries + 1); }, 250);
   }
 
-  waitFirebaseAndInit();
+  function anexarListener(DOC_REF) {
+    DOC_REF.onSnapshot(function (snap) {
+      listenerRetryMs = 4000; // sucesso: reseta o backoff
+      SyncEngine._lastSyncError = null;
+      if (!snap.exists) return;
+      var data = snap.data() || {};
+      ['ft_colaboradores', 'ft_postos', 'ft_registros', 'ft_bico_fixo'].forEach(function (key) {
+        if (data[key] === undefined) return;
+        var local = FT_Store.getSync(key);
+        if (JSON.stringify(local) !== JSON.stringify(data[key])) {
+          localStorage.setItem(key, JSON.stringify(data[key]));
+          FT_Store.set(key, data[key]);
+          if (window.FT_onRemoteUpdate) window.FT_onRemoteUpdate(key, data[key]);
+        }
+      });
+    }, function (err) {
+      SyncEngine._lastSyncError = err.message;
+      SyncEngine.logDiag('❌ listener: ' + err.message + ' — reconectando em ' + Math.round(listenerRetryMs / 1000) + 's');
+      SyncEngine.updateStatus('error');
+      // Reconecta sozinho (ex: regra do Firestore corrigida depois que a página já estava aberta),
+      // sem exigir que o usuário recarregue a página.
+      setTimeout(function () {
+        listenerRetryMs = Math.min(listenerRetryMs * 1.6, MAX_RETRY_MS);
+        anexarListener(DOC_REF);
+      }, listenerRetryMs);
+    });
+  }
+
+  function iniciar(cfgParam) {
+    if (jaIniciado) return;
+    var FIREBASE_CONFIG = cfgParam || (window.FT_getFirebaseConfig ? window.FT_getFirebaseConfig() : null);
+    if (!FIREBASE_CONFIG) return; // a tela de Configuração Inicial cuida disso
+
+    esperarSDK(function () {
+      try {
+        jaIniciado = true;
+        var app = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(FIREBASE_CONFIG);
+        var db = firebase.firestore();
+        var DOC_REF = db.collection('ft_app_data').doc('main');
+
+        // Grava cada entrada da fila no documento único (mesma estratégia do sistema original)
+        SyncEngine.setRemote(function (entry) {
+          var update = {};
+          update[entry.store] = entry.payload;
+          return DOC_REF.set(update, { merge: true }).then(function () { return true; });
+        });
+
+        // Listener em tempo real: aplica alterações vindas de outros dispositivos,
+        // e se reconecta sozinho se cair (sem precisar recarregar a página).
+        anexarListener(DOC_REF);
+      } catch (e) {
+        jaIniciado = false;
+        console.error('[Firebase] Erro na inicialização:', e);
+      }
+    });
+  }
+
+  // Exposto para a tela de Configuração Inicial iniciar o sync na hora,
+  // assim que as credenciais são salvas — sem precisar recarregar a página.
+  window.FT_iniciarFirebaseSync = iniciar;
+
+  iniciar();
 }());
 
 /* ════════════════════════════════════════════════════════════
