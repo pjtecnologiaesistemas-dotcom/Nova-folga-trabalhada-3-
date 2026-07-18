@@ -92,16 +92,16 @@
   #railToggle:hover, #railToggle.open { border-color: var(--accent1); background: rgba(247,183,49,.12); }
 
   #railMenu {
-    position: fixed; top: 0; left: 0; bottom: 0; z-index: 9650;
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 9650;
     width: 0; background: linear-gradient(180deg, #1a2133 0%, #0f1624 100%);
-    border-right: none; box-shadow: none;
+    border-left: none; box-shadow: none;
     display: flex; flex-direction: column; overflow: hidden;
     padding-top: 64px;
     transition: width .26s ease;
   }
   #railMenu.expanded {
     width: min(78vw, 300px); overflow-y: auto;
-    border-right: 2px solid var(--accent1); box-shadow: 4px 0 24px rgba(0,0,0,.45);
+    border-left: 2px solid var(--accent1); box-shadow: -4px 0 24px rgba(0,0,0,.45);
   }
 
   .rail-items { display: none; flex-direction: column; flex-shrink: 0; }
@@ -110,14 +110,14 @@
     display: flex; align-items: center; gap: 16px; width: 100%; border: none;
     background: transparent; cursor: pointer; padding: 13px 17px; text-align: left;
     font-family: 'Exo 2', sans-serif; font-size: .74rem; font-weight: 700; letter-spacing: .3px;
-    text-transform: uppercase; color: var(--muted); border-left: 3px solid transparent;
+    text-transform: uppercase; color: var(--muted); border-right: 3px solid transparent;
     white-space: nowrap; transition: background .2s, color .2s, border-color .2s;
     flex: 0 0 auto; min-width: 0;
   }
   .rail-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
   .rail-item.active {
-    background: linear-gradient(90deg, rgba(247,183,49,.18) 0%, transparent 100%);
-    color: var(--accent1); border-left-color: var(--accent1);
+    background: linear-gradient(270deg, rgba(247,183,49,.18) 0%, transparent 100%);
+    color: var(--accent1); border-right-color: var(--accent1);
   }
   .rail-icon { font-size: 1.25rem; line-height: 1; flex-shrink: 0; width: 22px; text-align: center; }
   .rail-label { white-space: nowrap; }
