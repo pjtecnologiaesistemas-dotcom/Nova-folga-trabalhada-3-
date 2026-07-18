@@ -1,0 +1,3685 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nova Folga Trabalhada (FT)</title>
+
+<!-- ── PWA ── -->
+<link rel="manifest" href="/Novafolgatrabalhada2/manifest.json">
+<meta name="theme-color" content="#f7b731">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FT">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase (compat SDK) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800&family=Nunito:wght@400;500;600&family=Orbitron:wght@700;900&family=Rajdhani:wght@300;400;600&display=swap');
+
+  :root {
+    --bg:       #0d1117;
+    --surface:  #161b22;
+    --card:     #1c2230;
+    --border:   #2a3347;
+    --accent1:  #f7b731;
+    --accent2:  #26de81;
+    --accent3:  #45aaf2;
+    --accent4:  #fd9644;
+    --danger:   #fc5c65;
+    --purple:   #a55eea;
+    --text:     #e8edf5;
+    --muted:    #8b97b0;
+    --input-bg: #10151e;
+    --radius:   14px;
+    --shadow:   0 8px 32px rgba(0,0,0,.45);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+    padding: 0 0 60px;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(247,183,49,.08) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 90% 80%,  rgba(38,222,129,.06) 0%, transparent 60%);
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, #1a2133 0%, #0f1624 100%);
+    border-bottom: 2px solid var(--accent1);
+    padding: 16px 20px 14px;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 4px 24px rgba(0,0,0,.5);
+  }
+  header h1 {
+    font-family: 'Exo 2', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 800;
+    letter-spacing: .5px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  header h1 .icon { font-size: 1.5rem; }
+
+  #header-badges { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; margin-top: 10px; }
+
+  .btn-novo-ciclo {
+    border: none; border-radius: 20px; cursor: pointer;
+    background: linear-gradient(135deg, var(--accent1), var(--accent4));
+    color: #0d1117; font-family: 'Exo 2', sans-serif; font-size: .72rem; font-weight: 700;
+    padding: 6px 14px; letter-spacing: .3px;
+  }
+
+  .badge-auto {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(38,222,129,.15); border: 1px solid rgba(38,222,129,.4);
+    color: var(--accent2); font-size: .72rem; font-weight: 600;
+    padding: 4px 12px; border-radius: 20px; letter-spacing: .3px;
+  }
+
+  #sync-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: .72rem; font-weight: 700; padding: 4px 13px; border-radius: 20px;
+    letter-spacing: .3px; transition: background .4s, color .4s, border-color .4s; cursor: default;
+  }
+  #sync-status.online  { background: rgba(38,222,129,.15); border: 1px solid rgba(38,222,129,.45); color: var(--accent2); }
+  #sync-status.offline { background: rgba(252,92,101,.15); border: 1px solid rgba(252,92,101,.45); color: var(--danger); }
+  #sync-status.syncing { background: rgba(69,170,242,.15); border: 1px solid rgba(69,170,242,.45); color: var(--accent3); }
+  #sync-status.error   { background: rgba(253,150,68,.15); border: 1px solid rgba(253,150,68,.55); color: var(--accent4); cursor: pointer; }
+  #sync-status .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  #sync-status.syncing .dot, #sync-status.error .dot { animation: pulse-dot 1s ease-in-out infinite; }
+  @keyframes pulse-dot { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.6); } }
+
+  #pending-badge {
+    display: none; align-items: center; gap: 5px;
+    background: rgba(253,150,68,.15); border: 1px solid rgba(253,150,68,.45); color: var(--accent4);
+    font-size: .68rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: .3px; cursor: pointer;
+  }
+  #pending-badge.visible { display: inline-flex; }
+
+  #diag-sync-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(139,151,176,.12); border: 1px solid rgba(139,151,176,.4); color: #8b97b0;
+    font-size: .68rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: .3px; cursor: pointer;
+  }
+
+  #diag-sync-panel {
+    display: none; position: fixed; left: 0; right: 0; bottom: 0; max-height: 60vh;
+    background: #0b0f1a; border-top: 1px solid rgba(69,170,242,.4); z-index: 9999; flex-direction: column;
+  }
+  #diag-sync-panel.visible { display: flex; }
+  #diag-sync-panel .diag-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.08); flex-shrink: 0; }
+  #diag-sync-panel .diag-head strong { color: #e7ecf5; font-size: .85rem; }
+  #diag-sync-panel .diag-close { background: rgba(252,92,101,.15); border: 1px solid rgba(252,92,101,.45); color: #fc5c65; font-size: .72rem; font-weight: 700; padding: 4px 12px; border-radius: 14px; cursor: pointer; }
+  #diag-sync-log { overflow-y: auto; padding: 10px 14px 18px; font-family: 'SFMono-Regular', Consolas, monospace; font-size: .72rem; line-height: 1.55; }
+
+  /* ── Tabs ── */
+  .tabs-wrapper { max-width: 480px; margin: 20px auto 0; padding: 0 16px; width: 100%; }
+  .tab-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .tab-btn {
+    flex: 1; min-width: 90px; border: 1.5px solid var(--border); border-radius: 10px;
+    background: var(--card); color: var(--muted); font-family: 'Exo 2', sans-serif;
+    font-size: .72rem; font-weight: 700; letter-spacing: .3px; padding: 11px 4px;
+    cursor: pointer; transition: all .2s; text-transform: uppercase;
+  }
+  .tab-btn.active { background: linear-gradient(135deg, rgba(247,183,49,.15) 0%, rgba(253,150,68,.1) 100%); border-color: var(--accent1); color: var(--accent1); box-shadow: 0 0 0 2px rgba(247,183,49,.12); }
+  .tab-btn:not(.active):hover { border-color: var(--muted); color: var(--text); }
+
+  .tab-panel { display: block; }
+  .tab-panel.hidden { display: none; }
+
+  .geral-posto-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); margin-bottom: 12px; }
+  .geral-posto-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .geral-posto-header h3 { font-family: 'Exo 2', sans-serif; font-size: .9rem; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .geral-posto-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .geral-metric { display: flex; flex-direction: column; align-items: center; gap: 2px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 4px; text-align: center; }
+  .geral-metric-value { font-family: 'Orbitron', sans-serif; font-size: .82rem; font-weight: 800; word-break: break-word; }
+  .geral-metric-label { font-size: .6rem; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; font-weight: 700; }
+  .floating-alerts { position: fixed; inset: 0; z-index: 9998; display: flex; align-items: center; justify-content: center; padding: 20px; pointer-events: none; opacity: 0; transition: opacity .2s; }
+  .floating-alerts.has-alert { background: rgba(0,0,0,.72); pointer-events: all; opacity: 1; }
+  .floating-alert-card { pointer-events: all; background: var(--card); border: 2px solid var(--danger); border-radius: 18px; box-shadow: 0 12px 48px rgba(252,92,101,.35); padding: 30px 24px 24px; max-width: 440px; width: 100%; max-height: 88vh; overflow-y: auto; animation: floatIn .3s ease; }
+  @keyframes floatIn { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
+  .floating-alert-icon { font-size: 2.8rem; text-align: center; margin-bottom: 14px; }
+  .floating-alert-head { display: block; text-align: center; font-family: 'Exo 2', sans-serif; font-weight: 800; font-size: 1.08rem; letter-spacing: .3px; text-transform: uppercase; color: var(--danger); margin-bottom: 14px; line-height: 1.35; }
+  .floating-alert-body { font-size: .94rem; color: var(--text); margin-bottom: 16px; line-height: 1.5; text-align: center; }
+  .floating-alert-body strong { color: var(--accent1); }
+  .floating-alert-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .floating-alert-actions button { flex: 1; min-width: 88px; border-radius: 10px; padding: 13px 8px; font-size: .78rem; font-weight: 800; cursor: pointer; text-transform: uppercase; letter-spacing: .2px; font-family: 'Exo 2', sans-serif; }
+  .fa-btn-lancar { background: var(--accent1); color: #171308; border: none; }
+  .fa-btn-adiar { background: var(--input-bg); color: var(--text); border: 1px solid var(--border); }
+  .fa-btn-dispensar { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .alertas-resumo { display: flex; justify-content: space-between; align-items: center; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 14px; font-size: .82rem; flex-wrap: wrap; gap: 6px; }
+  .alertas-resumo strong { color: var(--danger); }
+  .alerta-dias-chips { display: flex; gap: 4px; flex-wrap: wrap; margin: 4px 0; }
+  .alerta-dias-chips span { background: rgba(165,94,234,.15); color: var(--purple); border: 1px solid rgba(165,94,234,.4); font-size: .62rem; font-weight: 800; padding: 2px 7px; border-radius: 10px; }
+
+  /* ── Configurar Alertas de FT (detecção automática de pendências) ── */
+  .alertas-info-box { background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--accent3); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; font-size: .82rem; line-height: 1.7; color: var(--muted); }
+  .alertas-info-box .info-titulo { font-family: 'Exo 2', sans-serif; font-weight: 800; color: var(--accent3); font-size: .78rem; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+  .alertas-info-box .info-posto-linha { margin: 3px 0; }
+  .alertas-info-box .info-posto-linha strong { color: var(--text); }
+  .periodo-toggle-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .periodo-toggle-btn {
+    flex: 1; border: 1.5px solid var(--border); border-radius: 10px; background: var(--input-bg); color: var(--muted);
+    font-family: 'Exo 2', sans-serif; font-size: .82rem; font-weight: 800; padding: 12px 8px; cursor: pointer; transition: .15s;
+  }
+  .periodo-toggle-btn.on { background: rgba(38,222,129,.16); border-color: var(--accent2); color: var(--accent2); }
+  .posto-monitor-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+  .posto-monitor-card.inativo { opacity: .55; }
+  .posto-monitor-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .posto-monitor-nome { font-family: 'Exo 2', sans-serif; font-weight: 700; font-size: .92rem; word-break: break-word; }
+  .posto-monitor-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .icon-toggle-btn {
+    width: 32px; height: 32px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg);
+    color: var(--muted); font-size: .85rem; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+  }
+  .icon-toggle-btn.on-dia { background: rgba(253,203,110,.18); border-color: #fdcb6e; color: #fdcb6e; }
+  .icon-toggle-btn.on-noite { background: rgba(69,90,242,.18); border-color: #7a8cff; color: #a6b3ff; }
+  .icon-toggle-btn.on-ativo { background: rgba(38,222,129,.18); border-color: var(--accent2); color: var(--accent2); }
+  .icon-toggle-btn.btn-remove-posto { background: rgba(252,92,101,.12); border-color: rgba(252,92,101,.4); color: var(--danger); }
+  .regra-dias-row { display: flex; gap: 6px; }
+  .regra-dias-row button {
+    flex: 1; border: 1.5px solid var(--border); border-radius: 8px; background: var(--input-bg); color: var(--muted);
+    font-family: 'Exo 2', sans-serif; font-size: .74rem; font-weight: 700; padding: 9px 2px; cursor: pointer; transition: .15s;
+  }
+  .regra-dias-row button.active { background: rgba(69,170,242,.18); border-color: var(--accent3); color: var(--accent3); }
+  .escala-editor-row { display: flex; gap: 8px; align-items: stretch; }
+  .escala-editor-row select { flex: 1; }
+  .escala-editor-row .btn-add { flex-shrink: 0; padding: 0 18px; }
+  .escala-dia-linha { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .escala-dia-linha .escala-dia-label { width: 40px; flex-shrink: 0; font-size: .78rem; font-weight: 700; color: var(--muted); }
+  .escala-dia-linha input[type="time"] { flex: 1; }
+  .btn-force-sync {
+    width: 100%; border: none; border-radius: 10px; padding: 13px; margin-top: 6px; margin-bottom: 10px; cursor: pointer;
+    background: linear-gradient(135deg, var(--accent3), #2f7fd6); color: #06131f; font-family: 'Exo 2', sans-serif; font-weight: 800; font-size: .85rem;
+  }
+  .btn-test-alerta {
+    flex: 1; border: 1.5px solid rgba(253,150,68,.5); background: rgba(253,150,68,.12); color: var(--accent4);
+    border-radius: 10px; padding: 12px; font-family: 'Exo 2', sans-serif; font-weight: 800; font-size: .82rem; cursor: pointer;
+  }
+  .pendente-periodo-titulo { font-family: 'Exo 2', sans-serif; font-weight: 800; font-size: .8rem; letter-spacing: .5px; text-transform: uppercase; color: var(--accent3); margin: 12px 0 8px; text-align: center; }
+  .pendente-card { display: flex; align-items: center; gap: 10px; background: rgba(252,92,101,.08); border: 1px solid rgba(252,92,101,.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 9px; }
+  .pendente-card .pendente-icon { font-size: 1.25rem; flex-shrink: 0; }
+  .pendente-card .pendente-info { flex: 1; min-width: 0; }
+  .pendente-card .pendente-posto { font-weight: 700; color: var(--danger); font-size: .96rem; }
+  .pendente-card .pendente-detalhe { font-size: .8rem; color: var(--muted); }
+  .pendente-card .pendente-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); flex-shrink: 0; box-shadow: 0 0 8px rgba(252,92,101,.7); }
+  .floating-alert-card.pendencias .floating-alert-actions { margin-top: 12px; }
+  .fa-btn-ciente { background: var(--danger); color: #fff; border: none; }
+  .fa-link-config { display: block; text-align: center; font-size: .82rem; color: var(--accent3); margin-top: 14px; text-decoration: none; cursor: pointer; }
+  .placeholder-card {
+    background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius);
+    padding: 40px 20px; text-align: center; color: var(--muted); font-size: .9rem; line-height: 1.6;
+  }
+
+  .notice {
+    background: rgba(247,183,49,.1); border-left: 4px solid var(--accent1); border-radius: var(--radius);
+    padding: 14px 16px; font-size: .85rem; line-height: 1.6; color: #d4c27a; margin-bottom: 16px;
+  }
+  .notice strong { color: var(--accent1); }
+  .notice.purple { border-left-color: var(--purple); background: rgba(165,94,234,.08); color: #cbb3ef; }
+  .notice.purple strong { color: var(--purple); }
+
+  .form-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px 18px; box-shadow: var(--shadow); }
+
+  .field { margin-bottom: 22px; }
+  .field.hidden { display: none; }
+  .field-label { display: flex; align-items: center; gap: 8px; font-family: 'Exo 2', sans-serif; font-size: .75rem; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 8px; }
+  .field-label .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .col-amber { color: var(--accent1); } .col-green { color: var(--accent2); } .col-blue { color: var(--accent3); } .col-orange { color: var(--accent4); } .col-danger { color: var(--danger); } .col-purple { color: var(--purple); }
+  .bg-amber { background: var(--accent1); } .bg-green { background: var(--accent2); } .bg-blue { background: var(--accent3); } .bg-orange { background: var(--accent4); } .bg-danger { background: var(--danger); } .bg-purple { background: var(--purple); }
+
+  select, input[type="number"], input[type="datetime-local"], input[type="text"], textarea {
+    width: 100%; background: var(--input-bg); border: 1.5px solid var(--border); border-radius: 10px;
+    color: var(--text); font-family: 'Nunito', sans-serif; font-size: .95rem; padding: 13px 16px;
+    outline: none; transition: border-color .2s, box-shadow .2s; appearance: none; -webkit-appearance: none;
+  }
+  textarea { resize: vertical; min-height: 70px; font-family: 'Nunito', sans-serif; }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b97b0' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px; cursor: pointer;
+  }
+  select:focus, input:focus, textarea:focus { border-color: var(--accent1); box-shadow: 0 0 0 3px rgba(247,183,49,.18); }
+  select option { background: #1c2230; }
+
+  .field-hint { margin-top: 5px; font-size: .78rem; color: var(--muted); min-height: 1.1em; opacity: 0; transition: opacity .2s; }
+  .field-hint.visible { opacity: 1; }
+
+  .input-prefix { display: flex; align-items: center; background: var(--input-bg); border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden; transition: border-color .2s, box-shadow .2s; }
+  .input-prefix:focus-within { border-color: var(--accent1); box-shadow: 0 0 0 3px rgba(247,183,49,.18); }
+  .input-prefix span { padding: 0 4px 0 16px; color: var(--accent2); font-weight: 700; font-size: .95rem; pointer-events: none; white-space: nowrap; flex-shrink: 0; }
+  .input-prefix input { flex: 1; border: none !important; box-shadow: none !important; background: transparent !important; padding-left: 6px !important; }
+
+  .motivo-outro-wrap, .horario-custom-wrap { display: none; margin-top: 10px; }
+  .motivo-outro-wrap.visible, .horario-custom-wrap.visible { display: block; }
+  .horario-custom-row { display: flex; gap: 8px; }
+  .btn-horario-toggle {
+    display: inline-flex; align-items: center; gap: 5px; background: none; border: 1.5px dashed rgba(69,170,242,.4);
+    border-radius: 8px; color: var(--accent3); font-family: 'Exo 2', sans-serif; font-size: .72rem; font-weight: 700;
+    padding: 6px 14px; cursor: pointer; margin-top: 8px; width: 100%; justify-content: center;
+  }
+  .btn-horario-add {
+    border: none; border-radius: 10px; background: linear-gradient(135deg, var(--accent3), #1a6fc4); color: #fff;
+    font-family: 'Exo 2', sans-serif; font-size: .85rem; font-weight: 700; padding: 0 16px; cursor: pointer; white-space: nowrap;
+  }
+  .horario-saved-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .horario-chip {
+    background: rgba(69,170,242,.12); border: 1px solid rgba(69,170,242,.35); color: var(--accent3);
+    font-size: .78rem; padding: 5px 10px; border-radius: 14px; cursor: pointer;
+  }
+
+  .section-sep { display: flex; align-items: center; gap: 10px; margin: 8px 0 18px; font-family: 'Exo 2', sans-serif; font-size: .7rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); }
+  .section-sep::before, .section-sep::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .btn-row { display: flex; gap: 12px; margin-top: 10px; }
+  .btn { flex: 1; border: none; border-radius: 12px; font-family: 'Exo 2', sans-serif; font-size: .95rem; font-weight: 700; letter-spacing: .4px; padding: 15px 10px; cursor: pointer; transition: transform .15s, box-shadow .2s, opacity .2s; }
+  .btn:active { transform: scale(.97); }
+  .btn-clear { background: rgba(139,151,176,.12); border: 1.5px solid var(--border); color: var(--muted); }
+  .btn-clear:hover { border-color: var(--muted); color: var(--text); }
+  .btn-submit { background: linear-gradient(135deg, var(--accent1) 0%, var(--accent4) 100%); color: #0d1117; box-shadow: 0 4px 20px rgba(247,183,49,.35); }
+  .btn-submit.purple { background: linear-gradient(135deg, var(--purple), #6c3db5); box-shadow: 0 4px 20px rgba(165,94,234,.35); }
+  .btn-submit:disabled { opacity: .6; cursor: default; }
+
+  .spin { display: inline-block; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    padding: 14px 24px; border-radius: 12px; font-weight: 600; font-size: .9rem; opacity: 0;
+    transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .35s; z-index: 999; max-width: 90vw; text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.success { background: var(--accent2); color: #0d1117; }
+  .toast.error   { background: var(--danger);  color: #fff; }
+
+  /* Cadastro tab */
+  .cadastro-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 18px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .cadastro-section h2 { font-family: 'Exo 2', sans-serif; font-size: .9rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+  .add-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .add-row input { flex: 1; }
+  .btn-add {
+    border: none; border-radius: 10px; background: linear-gradient(135deg, var(--accent2) 0%, var(--accent3) 100%);
+    color: #0d1117; font-family: 'Exo 2', sans-serif; font-size: .9rem; font-weight: 700; padding: 0 18px; cursor: pointer; white-space: nowrap;
+  }
+  .btn-add:active { transform: scale(.97); }
+
+  .list-items { display: flex; flex-direction: column; gap: 8px; }
+  .list-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: var(--input-bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: .9rem;
+  }
+  .list-item span { word-break: break-word; }
+  .btn-edit-item, .btn-remove {
+    border: none; border-radius: 8px; width: 30px; height: 30px; cursor: pointer; font-size: .85rem; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .btn-edit-item { background: rgba(69,170,242,.15); color: var(--accent3); }
+  .btn-remove { background: rgba(252,92,101,.15); color: var(--danger); }
+  .empty-state { color: var(--muted); font-size: .85rem; text-align: center; padding: 10px 0; }
+
+  /* Dashboard */
+  .dash-filter-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .dash-filter-row select { flex: 1; }
+  .dash-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+  .dash-stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 12px; box-shadow: var(--shadow); text-align: center; }
+  .dash-stat-value { font-family: 'Orbitron', sans-serif; font-size: 1.35rem; font-weight: 900; margin-bottom: 4px; line-height: 1.2; }
+  .dash-stat-label { font-size: .66rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 700; }
+
+  .dash-bars { display: flex; flex-direction: column; gap: 14px; }
+  .dash-bar-head { display: flex; justify-content: space-between; align-items: baseline; font-size: .82rem; margin-bottom: 6px; gap: 8px; }
+  .dash-bar-head strong { color: var(--text); font-weight: 700; }
+  .dash-bar-head span { color: var(--muted); font-size: .76rem; white-space: nowrap; flex-shrink: 0; }
+  .dash-bar-track { background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; height: 9px; overflow: hidden; }
+  .dash-bar-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, var(--accent1), var(--accent4)); transition: width .4s ease; }
+
+  .dash-rank-item { display: flex; align-items: center; gap: 10px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: .88rem; }
+  .dash-rank-item .rank-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: rgba(247,183,49,.15); color: var(--accent1); font-size: .7rem; font-weight: 800; flex-shrink: 0; }
+  .dash-rank-item .rank-name { flex: 1; word-break: break-word; }
+  .dash-rank-item .rank-count { color: var(--accent2); font-weight: 700; font-size: .78rem; flex-shrink: 0; }
+
+  /* Histórico */
+  .hist-filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+  .hist-filters-row { display: flex; gap: 10px; }
+  .hist-filters-row > * { flex: 1; min-width: 0; }
+  .hist-filters label { display: block; font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; font-weight: 700; margin-bottom: 5px; }
+
+  .hist-summary { display: flex; justify-content: space-between; align-items: center; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; margin-bottom: 14px; font-size: .82rem; }
+  .hist-summary strong { color: var(--accent1); }
+  .hist-summary .hs-valor { color: var(--accent2); font-weight: 700; }
+
+  .hist-export-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .btn-export {
+    flex: 1; border: 1.5px solid var(--border); border-radius: 10px; background: var(--card); color: var(--text);
+    font-family: 'Exo 2', sans-serif; font-size: .72rem; font-weight: 700; padding: 10px 4px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 5px; transition: border-color .2s;
+  }
+  .btn-export:hover { border-color: var(--accent1); }
+  .btn-export:disabled { opacity: .5; cursor: default; }
+
+  .hist-list { display: flex; flex-direction: column; gap: 10px; }
+  .hist-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+  .hist-item-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; gap: 8px; }
+  .hist-date { font-family: 'Exo 2', sans-serif; font-size: .78rem; font-weight: 700; color: var(--accent3); }
+  .hist-valor { font-weight: 800; color: var(--accent2); font-size: .88rem; white-space: nowrap; }
+  .hist-item-mid { font-size: .92rem; margin-bottom: 6px; }
+  .hist-item-mid .posto-nome { font-weight: 700; }
+  .hist-item-mid .sep-dot { color: var(--muted); margin: 0 4px; }
+  .hist-item-people { font-size: .82rem; color: var(--muted); margin-bottom: 4px; }
+  .hist-item-people strong { color: var(--text); font-weight: 600; }
+  .hist-item-obs { font-size: .8rem; color: var(--muted); font-style: italic; margin-bottom: 8px; word-break: break-word; }
+  .hist-item-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+  /* Modal editar FT (reaproveita .modal-overlay / .modal-box) */
+  .modal-box.wide { max-width: 420px; text-align: left; max-height: 88vh; overflow-y: auto; }
+  .modal-box.wide .field { margin-bottom: 16px; }
+  .modal-box.wide .modal-title { text-align: left; }
+
+  /* Bico Fixo */
+  .bico-summary { display: flex; gap: 12px; margin-bottom: 16px; }
+  .bico-summary-card { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 10px; text-align: center; box-shadow: var(--shadow); }
+  .bico-summary-value { font-family: 'Orbitron', sans-serif; font-size: 1.25rem; font-weight: 900; margin-bottom: 3px; }
+  .bico-summary-label { font-size: .65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; font-weight: 700; }
+
+  .day-chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .day-chip {
+    flex: 1; min-width: 38px; border: 1.5px solid var(--border); border-radius: 8px; background: var(--input-bg);
+    color: var(--muted); font-family: 'Exo 2', sans-serif; font-size: .72rem; font-weight: 700; padding: 9px 2px;
+    cursor: pointer; text-align: center; transition: all .15s;
+  }
+  .day-chip.active { background: rgba(165,94,234,.18); border-color: var(--purple); color: var(--purple); }
+
+  .bico-toggle-row { display: flex; align-items: center; gap: 10px; }
+  .bico-toggle-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent2); cursor: pointer; }
+  .bico-toggle-row label { font-size: .88rem; cursor: pointer; }
+
+  .bico-estimate { font-size: .8rem; color: var(--muted); margin-top: 6px; }
+  .bico-estimate strong { color: var(--accent2); }
+
+  .bico-filters-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .bico-filters-row > * { flex: 1; min-width: 0; }
+
+  .bico-list { display: flex; flex-direction: column; gap: 10px; }
+  .bico-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+  .bico-item.inativo { opacity: .55; }
+  .bico-item-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+  .bico-item-title { font-weight: 700; font-size: .92rem; }
+  .bico-item-title .posto-sep { color: var(--muted); margin: 0 4px; font-weight: 400; }
+  .bico-status-badge { font-size: .62rem; font-weight: 800; padding: 3px 9px; border-radius: 12px; text-transform: uppercase; letter-spacing: .3px; white-space: nowrap; }
+  .bico-status-badge.ativo { background: rgba(38,222,129,.15); color: var(--accent2); border: 1px solid rgba(38,222,129,.4); }
+  .bico-status-badge.inativo { background: rgba(139,151,176,.15); color: var(--muted); border: 1px solid var(--border); }
+  .bico-item-info { font-size: .82rem; color: var(--muted); margin-bottom: 4px; }
+  .bico-item-info strong { color: var(--text); font-weight: 600; }
+  .bico-item-dias { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0; }
+  .bico-item-dias span { background: rgba(165,94,234,.12); border: 1px solid rgba(165,94,234,.3); color: var(--purple); font-size: .68rem; font-weight: 700; padding: 3px 8px; border-radius: 10px; }
+  .bico-item-obs { font-size: .8rem; color: var(--muted); font-style: italic; margin-bottom: 8px; }
+  .bico-item-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+  /* Pagamentos */
+  .pag-filters-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .pag-filters-row > * { flex: 1; min-width: 0; }
+
+  .pag-summary { display: flex; gap: 10px; margin-bottom: 16px; }
+  .pag-summary-card { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 8px; text-align: center; box-shadow: var(--shadow); }
+  .pag-summary-value { font-family: 'Orbitron', sans-serif; font-size: 1.05rem; font-weight: 900; margin-bottom: 3px; }
+  .pag-summary-label { font-size: .62rem; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; font-weight: 700; }
+
+  .pag-group { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); margin-bottom: 14px; }
+  .pag-group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 8px; }
+  .pag-group-header h3 { font-family: 'Exo 2', sans-serif; font-size: .92rem; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .pag-group-count { background: rgba(139,151,176,.18); color: var(--muted); font-size: .65rem; font-weight: 800; padding: 2px 9px; border-radius: 12px; }
+  .pag-group-totals { display: flex; gap: 14px; font-size: .78rem; color: var(--muted); margin-bottom: 12px; flex-wrap: wrap; }
+  .pag-group-totals strong { font-weight: 700; }
+  .pag-group-totals .tot-pago strong { color: var(--accent2); }
+  .pag-group-totals .tot-pendente strong { color: var(--accent4); }
+
+  .pag-entries { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .pag-entry-row { display: flex; align-items: center; gap: 8px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: .78rem; }
+  .pag-entry-info { flex: 1; min-width: 0; }
+  .pag-entry-date { color: var(--muted); }
+  .pag-entry-posto { font-weight: 600; }
+  .pag-entry-valor { font-weight: 700; color: var(--text); white-space: nowrap; }
+  .pag-status-badge { border: none; cursor: pointer; font-size: .65rem; font-weight: 800; padding: 4px 10px; border-radius: 10px; text-transform: uppercase; letter-spacing: .3px; white-space: nowrap; flex-shrink: 0; }
+  .pag-status-badge.pago { background: rgba(38,222,129,.15); color: var(--accent2); border: 1px solid rgba(38,222,129,.4); }
+  .pag-status-badge.pendente { background: rgba(253,150,68,.15); color: var(--accent4); border: 1px solid rgba(253,150,68,.45); }
+
+  .pag-group-actions { display: flex; gap: 8px; }
+  .btn-pag-action {
+    flex: 1; border: 1.5px solid var(--border); border-radius: 10px; background: var(--input-bg); color: var(--text);
+    font-family: 'Exo 2', sans-serif; font-size: .72rem; font-weight: 700; padding: 10px 6px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .btn-pag-action:hover { border-color: var(--accent1); }
+  .btn-pag-action:disabled { opacity: .5; cursor: default; }
+
+  /* Modal duplicata */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.72); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .modal-overlay.show { opacity: 1; pointer-events: all; }
+  .modal-box { background: var(--card); border: 2px solid var(--danger); border-radius: 18px; padding: 28px 22px 22px; max-width: 380px; width: 100%; box-shadow: 0 12px 48px rgba(252,92,101,.3); transform: scale(.92); transition: transform .25s cubic-bezier(.34,1.56,.64,1); }
+  .modal-overlay.show .modal-box { transform: scale(1); }
+  .modal-icon { font-size: 2.6rem; text-align: center; margin-bottom: 12px; }
+  .modal-title { font-family: 'Exo 2', sans-serif; font-size: 1rem; font-weight: 800; color: var(--danger); text-align: center; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 14px; }
+  .modal-body { background: rgba(252,92,101,.08); border: 1px solid rgba(252,92,101,.25); border-radius: 10px; padding: 14px 16px; font-size: .87rem; line-height: 1.7; color: var(--text); margin-bottom: 18px; }
+  .modal-body strong { color: var(--danger); }
+  .modal-detail { display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; font-size: .82rem; color: var(--muted); }
+
+  /* ── Configuração Inicial (credenciais do banco de dados) ── */
+  .setup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 20000; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .setup-overlay.show { display: flex; }
+  .setup-box { background: var(--card); border: 2px solid var(--accent3); border-radius: 18px; padding: 28px 22px 24px; max-width: 460px; width: 100%; max-height: 92vh; overflow-y: auto; box-shadow: 0 12px 48px rgba(0,0,0,.6); }
+  .setup-icon { font-size: 2.6rem; text-align: center; margin-bottom: 10px; }
+  .setup-title { font-family: 'Exo 2', sans-serif; font-size: 1.05rem; font-weight: 800; color: var(--accent3); text-align: center; letter-spacing: .4px; margin-bottom: 10px; }
+  .setup-sub { font-size: .82rem; color: var(--muted); line-height: 1.6; text-align: center; margin-bottom: 20px; }
+  .setup-field { margin-bottom: 14px; }
+  .setup-field label { display: block; font-size: .74rem; font-weight: 700; color: var(--text); margin-bottom: 5px; }
+  .setup-field textarea, .setup-field input[type="text"] {
+    width: 100%; background: var(--input-bg); border: 1.5px solid var(--border); border-radius: 10px;
+    color: var(--text); padding: 10px 12px; font-size: .82rem; font-family: 'Consolas', monospace;
+  }
+  .setup-field textarea { resize: vertical; line-height: 1.5; }
+  .btn-setup-parse {
+    margin-top: 8px; width: 100%; border: 1.5px solid rgba(69,170,242,.5); background: rgba(69,170,242,.12); color: var(--accent3);
+    border-radius: 10px; padding: 10px; font-family: 'Exo 2', sans-serif; font-weight: 800; font-size: .78rem; cursor: pointer;
+  }
+  .setup-sep { text-align: center; font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin: 18px 0 14px; position: relative; }
+  .setup-sep::before, .setup-sep::after { content: ''; position: absolute; top: 50%; width: 32%; height: 1px; background: var(--border); }
+  .setup-sep::before { left: 0; }
+  .setup-sep::after { right: 0; }
+  .setup-erro { color: var(--danger); font-size: .78rem; text-align: center; margin: 4px 0 14px; min-height: 1em; }
+  .btn-setup-confirmar {
+    width: 100%; border: none; border-radius: 12px; padding: 15px; cursor: pointer;
+    background: linear-gradient(135deg, var(--accent2), #1fa363); color: #06231a; font-family: 'Exo 2', sans-serif; font-weight: 800; font-size: .92rem;
+  }
+  .btn-modal-ok { flex: 1; border: none; border-radius: 10px; background: var(--danger); color: #fff; font-family: 'Exo 2', sans-serif; font-size: .9rem; font-weight: 700; padding: 13px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="setup-overlay" id="setupInicialOverlay">
+  <div class="setup-box">
+    <div class="setup-icon">&#x1F510;</div>
+    <div class="setup-title">Configuração Inicial do Sistema</div>
+    <p class="setup-sub">Para começar, informe as credenciais do banco de dados (Firebase) deste projeto. Isso é feito apenas uma vez por aparelho.</p>
+
+    <div class="setup-field">
+      <label for="setupColarConfig">&#x1F4CB; Colar configuração do Firebase (opcional, preenche tudo automaticamente)</label>
+      <textarea id="setupColarConfig" rows="5" placeholder='Cole aqui o bloco copiado do Firebase Console, no formato:&#10;const firebaseConfig = {&#10;  apiKey: "AIzaSy...",&#10;  authDomain: "meu-projeto.firebaseapp.com",&#10;  projectId: "meu-projeto",&#10;  storageBucket: "meu-projeto.firebasestorage.app",&#10;  messagingSenderId: "123456789012",&#10;  appId: "1:123456789012:web:abcdef123456"&#10;};'></textarea>
+      <button type="button" class="btn-setup-parse" id="btnSetupColar">&#x2728; Preencher campos automaticamente</button>
+    </div>
+
+    <div class="setup-sep">ou preencha manualmente</div>
+
+    <div class="setup-field">
+      <label for="setupApiKey">apiKey</label>
+      <input type="text" id="setupApiKey" placeholder="AIzaSy...">
+    </div>
+    <div class="setup-field">
+      <label for="setupAuthDomain">authDomain</label>
+      <input type="text" id="setupAuthDomain" placeholder="meu-projeto.firebaseapp.com">
+    </div>
+    <div class="setup-field">
+      <label for="setupProjectId">projectId</label>
+      <input type="text" id="setupProjectId" placeholder="meu-projeto">
+    </div>
+    <div class="setup-field">
+      <label for="setupStorageBucket">storageBucket</label>
+      <input type="text" id="setupStorageBucket" placeholder="meu-projeto.firebasestorage.app">
+    </div>
+    <div class="setup-field">
+      <label for="setupMessagingSenderId">messagingSenderId</label>
+      <input type="text" id="setupMessagingSenderId" placeholder="123456789012">
+    </div>
+    <div class="setup-field">
+      <label for="setupAppId">appId</label>
+      <input type="text" id="setupAppId" placeholder="1:123456789012:web:abcdef123456">
+    </div>
+
+    <p class="setup-erro" id="setupErro"></p>
+
+    <button type="button" class="btn-setup-confirmar" id="btnSetupConfirmar">&#x2714; Salvar e Iniciar o Sistema</button>
+  </div>
+</div>
+
+<header id="main-header">
+  <h1><span class="icon">&#x1F4BC;</span> Nova Folga Trabalhada <span style="color:var(--accent1)">FT</span></h1>
+  <div id="header-badges">
+    <button class="btn-novo-ciclo" id="btnNovoCiclo">&#x1F504; Novo Ciclo</button>
+    <button class="btn-novo-ciclo" id="btnAbrirAlertas" style="background:rgba(69,170,242,.15);border-color:rgba(69,170,242,.5);color:var(--accent3);">&#x2699;&#xFE0F; Alertas</button>
+    <div class="badge-auto">&#x1F4BE; Offline-first</div>
+    <span id="sync-status" class="online" title="Status da conexão"><span class="dot"></span><span id="sync-label">Online</span></span>
+    <span id="pending-badge" title="Toque para ver por que estas operações não sincronizaram"><span>&#x23F3; <span id="pending-count">0</span> pendente(s)</span></span>
+    <span id="diag-sync-btn" title="Abrir diagnóstico de sincronização">&#x1F527; Diagnóstico</span>
+  </div>
+</header>
+
+<div id="diag-sync-panel">
+  <div class="diag-head"><strong>&#x1F527; Diagnóstico de Sincronização</strong><span class="diag-close" id="diagClose">Fechar</span></div>
+  <div id="diag-sync-log"></div>
+</div>
+
+<div class="tabs-wrapper">
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="tab-ft">&#x1F4CB; Nova FT</button>
+    <button class="tab-btn" data-tab="tab-cadastros">&#x1F5C2;&#xFE0F; Cadastros</button>
+    <button class="tab-btn" data-tab="tab-dashboard">&#x1F4CA; Dashboard</button>
+    <button class="tab-btn" data-tab="tab-geral">&#x1F30D; Geral</button>
+    <button class="tab-btn" data-tab="tab-historico">&#x1F4DC; Histórico</button>
+    <button class="tab-btn" data-tab="tab-bico">&#x1F4A0; Bico Fixo</button>
+    <button class="tab-btn" data-tab="tab-pagamentos">&#x1F4B3; Pagamentos</button>
+    <button class="tab-btn" data-tab="tab-alertas">&#x1F514; Alertas</button>
+  </div>
+
+  <!-- ABA: NOVA FT -->
+  <div class="tab-panel" id="tab-ft">
+    <div class="form-card">
+      <form id="ftForm" novalidate>
+
+        <div class="field">
+          <div class="field-label col-amber"><span class="dot bg-amber"></span>&#x1F4CD; Posto</div>
+          <select id="posto" required><option value="">-- Selecione --</option></select>
+        </div>
+
+        <div class="field">
+          <div class="field-label col-orange"><span class="dot bg-orange"></span>&#x1F4AC; Motivo</div>
+          <select id="motivo" required>
+            <option value="">-- Selecione --</option>
+            <option>Afastamento</option><option>Atestado</option><option>Bico Fixo</option>
+            <option>Cobertura de Férias</option><option>Extra</option><option>Falta de Efetivo</option>
+            <option>Folga do Vigia</option><option>Remanejamento Interno</option><option>Suspensão</option>
+            <option>Treinamento</option><option value="__outro__">&#x270F;&#xFE0F; Outro (digitar)</option>
+          </select>
+          <div class="motivo-outro-wrap" id="motivo-outro-wrap-ft">
+            <input type="text" id="motivo-outro-ft" placeholder="Descreva o motivo…" maxlength="100">
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label col-blue"><span class="dot bg-blue"></span>&#x1F4DD; Observação <span style="font-size:.7rem;color:var(--muted);font-weight:400;text-transform:none;">(opcional)</span></div>
+          <textarea id="observacao" placeholder="Informações adicionais sobre este lançamento…" maxlength="300"></textarea>
+        </div>
+
+        <div class="field">
+          <div class="field-label col-blue"><span class="dot bg-blue"></span>&#x1F550; Horário</div>
+          <select id="horario" required>
+            <option value="">-- Selecione --</option>
+            <option>06:00 – 18:00</option><option>18:00 – 06:00</option><option>07:00 – 17:00</option>
+            <option>07:00 – 16:00</option><option>18:00 – 07:00</option><option>18:00 – 08:30</option>
+            <option>17:00 – 07:00</option><option>22:00 – 07:20</option>
+          </select>
+          <button type="button" class="btn-horario-toggle" id="btn-toggle-horario-ft">&#x2795; Adicionar outro horário</button>
+          <div class="horario-custom-wrap" id="horario-custom-ft">
+            <div class="horario-custom-row">
+              <input type="text" id="horario-custom-input-ft" placeholder="Ex: 05:00 – 11:00 ou Escala Especial" maxlength="40">
+              <button type="button" class="btn-horario-add" id="btn-horario-save-ft">&#x2714; Salvar</button>
+            </div>
+            <div class="horario-saved-list" id="horario-saved-ft"></div>
+          </div>
+        </div>
+
+        <div class="section-sep">Colaboradores</div>
+
+        <div class="field" id="block-substituto">
+          <div class="field-label col-green"><span class="dot bg-green"></span>&#x1F464; Quem está indo (Porteiro/Colaborador)</div>
+          <select id="substituto" required><option value="">-- Selecione --</option></select>
+        </div>
+
+        <div class="field hidden" id="block-quem-faltou">
+          <div class="field-label col-danger"><span class="dot bg-danger"></span>&#x1F6A8; Quem faltou</div>
+          <select id="quemFaltou"><option value="">-- Selecione --</option></select>
+          <p class="field-hint" id="hint-quem-faltou"></p>
+        </div>
+
+        <div class="section-sep">Valores</div>
+
+        <div class="field">
+          <div class="field-label col-green"><span class="dot bg-green"></span>&#x1F4B0; Valor (R$)</div>
+          <div class="input-prefix"><span>R$</span><input type="number" id="valor" min="0" step="0.01" placeholder="0,00"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-label col-blue"><span class="dot bg-blue"></span>&#x1F4C5; Data / Hora</div>
+          <input type="datetime-local" id="dataHora" required>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="btn btn-clear" id="btnLimpar">&#x21BA; Limpar</button>
+          <button type="submit" class="btn btn-submit" id="btnRegistrar">&#x1F4BE; Registrar FT</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ABA: CADASTROS -->
+  <div class="tab-panel hidden" id="tab-cadastros">
+    <div class="cadastro-section">
+      <h2 class="col-green">&#x1F464; Colaboradores <span id="badge-colaboradores" style="margin-left:auto;background:rgba(139,151,176,.18);color:#8b97b0;font-size:.65rem;font-weight:800;padding:2px 9px;border-radius:12px;">0</span></h2>
+      <div class="add-row">
+        <input type="text" id="inputColaborador" placeholder="Nome do colaborador…" maxlength="80">
+        <button class="btn-add" id="btnAddColaborador">+ Adicionar</button>
+      </div>
+      <div class="list-items" id="listaColaboradores"><p class="empty-state">Nenhum colaborador cadastrado.</p></div>
+    </div>
+
+    <div class="cadastro-section">
+      <h2 class="col-amber">&#x1F4CD; Postos de Trabalho <span id="badge-postos" style="margin-left:auto;background:rgba(139,151,176,.18);color:#8b97b0;font-size:.65rem;font-weight:800;padding:2px 9px;border-radius:12px;">0</span></h2>
+      <div class="add-row">
+        <input type="text" id="inputPosto" placeholder="Nome do posto…" maxlength="80">
+        <button class="btn-add" id="btnAddPosto">+ Adicionar</button>
+      </div>
+      <div class="list-items" id="listaPostos"><p class="empty-state">Nenhum posto cadastrado.</p></div>
+    </div>
+  </div>
+
+  <!-- ABAS AINDA NÃO RECONSTRUÍDAS (próximas fases) -->
+  <!-- ABA: DASHBOARD -->
+  <div class="tab-panel hidden" id="tab-dashboard">
+    <div class="dash-filter-row">
+      <select id="dashPeriodo">
+        <option value="mes">&#x1F4C5; Mês atual</option>
+        <option value="7d">Últimos 7 dias</option>
+        <option value="30d">Últimos 30 dias</option>
+        <option value="todos">Todos os períodos</option>
+      </select>
+    </div>
+
+    <div class="dash-stats-grid">
+      <div class="dash-stat-card">
+        <div class="dash-stat-value col-amber" id="dashTotalFts">0</div>
+        <div class="dash-stat-label">FTs registradas</div>
+      </div>
+      <div class="dash-stat-card">
+        <div class="dash-stat-value col-green" id="dashValorTotal">R$ 0,00</div>
+        <div class="dash-stat-label">Valor total</div>
+      </div>
+      <div class="dash-stat-card">
+        <div class="dash-stat-value col-blue" id="dashTicketMedio">R$ 0,00</div>
+        <div class="dash-stat-label">Ticket médio</div>
+      </div>
+      <div class="dash-stat-card">
+        <div class="dash-stat-value col-orange" id="dashPostosAtivos">0</div>
+        <div class="dash-stat-label">Postos com FT</div>
+      </div>
+    </div>
+
+    <div class="cadastro-section">
+      <h2 class="col-orange">&#x1F4AC; Por Motivo</h2>
+      <div class="dash-bars" id="dashPorMotivo"><p class="empty-state">Sem registros no período.</p></div>
+    </div>
+
+    <div class="cadastro-section">
+      <h2 class="col-amber">&#x1F4CD; Postos com mais FTs</h2>
+      <div class="list-items" id="dashTopPostos"><p class="empty-state">Sem registros no período.</p></div>
+    </div>
+
+    <div class="cadastro-section">
+      <h2 class="col-green">&#x1F464; Colaboradores mais acionados</h2>
+      <div class="list-items" id="dashTopColab"><p class="empty-state">Sem registros no período.</p></div>
+    </div>
+  </div>
+
+  <div class="tab-panel hidden" id="tab-geral">
+    <div class="cadastro-section">
+      <div class="hist-filters-row">
+        <div>
+          <label>Período</label>
+          <select id="geralPeriodo">
+            <option value="todos">Todos os períodos</option>
+            <option value="mes" selected>Este mês</option>
+            <option value="7d">Últimos 7 dias</option>
+            <option value="30d">Últimos 30 dias</option>
+          </select>
+        </div>
+        <div>
+          <label>Buscar posto</label>
+          <input type="text" id="geralBusca" placeholder="Nome do posto…">
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-stats-grid">
+      <div class="dash-stat-card">
+        <div class="dash-stat-value col-amber" id="geralTotalPostos">0</div>
+        <div class="dash-stat-label">Postos com movimento</div>
+      </div>
+      <div class="dash-stat-card">
+        <div class="dash-stat-value col-green" id="geralValorFT">R$ 0,00</div>
+        <div class="dash-stat-label">Valor total FTs</div>
+      </div>
+      <div class="dash-stat-card">
+        <div class="dash-stat-value col-purple" id="geralValorBico">R$ 0,00</div>
+        <div class="dash-stat-label">Bico Fixo (est./mês)</div>
+      </div>
+      <div class="dash-stat-card">
+        <div class="dash-stat-value col-orange" id="geralValorPendente">R$ 0,00</div>
+        <div class="dash-stat-label">Pagamentos pendentes</div>
+      </div>
+    </div>
+
+    <div class="cadastro-section">
+      <h2 class="col-amber">&#x1F30D; Consolidado por Posto</h2>
+      <div id="geralPorPosto"><p class="empty-state">Sem dados no período.</p></div>
+    </div>
+  </div>
+  <!-- ABA: HISTÓRICO -->
+  <div class="tab-panel hidden" id="tab-historico">
+    <div class="cadastro-section">
+      <div class="hist-filters">
+        <div class="hist-filters-row">
+          <div>
+            <label>De</label>
+            <input type="date" id="histDataDe">
+          </div>
+          <div>
+            <label>Até</label>
+            <input type="date" id="histDataAte">
+          </div>
+        </div>
+        <div class="hist-filters-row">
+          <div>
+            <label>Posto</label>
+            <select id="histPosto"><option value="">Todos</option></select>
+          </div>
+          <div>
+            <label>Motivo</label>
+            <select id="histMotivo"><option value="">Todos</option></select>
+          </div>
+        </div>
+        <div class="hist-filters-row">
+          <div>
+            <label>Colaborador</label>
+            <select id="histColab"><option value="">Todos</option></select>
+          </div>
+          <div>
+            <label>Buscar</label>
+            <input type="text" id="histBusca" placeholder="Observação, nome…">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hist-summary">
+      <span><strong id="histCount">0</strong> registro(s)</span>
+      <span class="hs-valor" id="histValorTotal">R$ 0,00</span>
+    </div>
+
+    <div class="hist-export-row">
+      <button class="btn-export" id="btnExportCSV">&#x1F4C4; CSV</button>
+      <button class="btn-export" id="btnExportExcel">&#x1F4CA; Excel</button>
+      <button class="btn-export" id="btnExportPDF">&#x1F4D1; PDF</button>
+    </div>
+
+    <div class="hist-list" id="histLista"><p class="empty-state">Nenhum registro encontrado.</p></div>
+  </div>
+
+  <!-- ABA: BICO FIXO -->
+  <div class="tab-panel hidden" id="tab-bico">
+    <div class="bico-summary">
+      <div class="bico-summary-card">
+        <div class="bico-summary-value col-green" id="bicoTotalAtivos">0</div>
+        <div class="bico-summary-label">Bicos ativos</div>
+      </div>
+      <div class="bico-summary-card">
+        <div class="bico-summary-value col-purple" id="bicoValorMensal">R$ 0,00</div>
+        <div class="bico-summary-label">Estimativa mensal</div>
+      </div>
+    </div>
+
+    <div class="cadastro-section">
+      <h2 class="col-purple" id="bicoFormTitulo">&#x1F4A0; Novo Bico Fixo</h2>
+      <form id="bicoForm" novalidate>
+        <div class="field">
+          <div class="field-label col-green"><span class="dot bg-green"></span>Colaborador</div>
+          <select id="bicoColaborador" required><option value="">-- Selecione --</option></select>
+        </div>
+        <div class="field">
+          <div class="field-label col-amber"><span class="dot bg-amber"></span>Posto</div>
+          <select id="bicoPosto" required><option value="">-- Selecione --</option></select>
+        </div>
+        <div class="field">
+          <div class="field-label col-blue"><span class="dot bg-blue"></span>Horário</div>
+          <select id="bicoHorario" required>
+            <option value="">-- Selecione --</option>
+            <option>06:00 – 18:00</option><option>18:00 – 06:00</option><option>18:00 – 02:00</option>
+          </select>
+          <button type="button" class="btn-horario-toggle" id="btn-toggle-horario-bico">&#x2795; Adicionar outro horário</button>
+          <div class="horario-custom-wrap" id="horario-custom-bico">
+            <div class="horario-custom-row">
+              <input type="text" id="horario-custom-input-bico" placeholder="Ex: 05:00 – 11:00 ou Escala Especial" maxlength="40">
+              <button type="button" class="btn-horario-add" id="btn-horario-save-bico">&#x2714; Salvar</button>
+            </div>
+            <div class="horario-saved-list" id="horario-saved-bico"></div>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label col-purple"><span class="dot bg-purple"></span>Dias da semana</div>
+          <div class="day-chip-row" id="bicoDias">
+            <button type="button" class="day-chip" data-dia="DOM">Dom</button>
+            <button type="button" class="day-chip" data-dia="SEG">Seg</button>
+            <button type="button" class="day-chip" data-dia="TER">Ter</button>
+            <button type="button" class="day-chip" data-dia="QUA">Qua</button>
+            <button type="button" class="day-chip" data-dia="QUI">Qui</button>
+            <button type="button" class="day-chip" data-dia="SEX">Sex</button>
+            <button type="button" class="day-chip" data-dia="SAB">Sáb</button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label col-green"><span class="dot bg-green"></span>Valor por diária (R$)</div>
+          <div class="input-prefix"><span>R$</span><input type="number" id="bicoValor" min="0" step="0.01" placeholder="0,00"></div>
+          <p class="bico-estimate" id="bicoEstimativa">Estimativa mensal: <strong>R$ 0,00</strong></p>
+        </div>
+        <div class="field">
+          <div class="field-label col-blue"><span class="dot bg-blue"></span>Observação <span style="font-size:.7rem;color:var(--muted);font-weight:400;text-transform:none;">(opcional)</span></div>
+          <textarea id="bicoObservacao" maxlength="300"></textarea>
+        </div>
+        <div class="field">
+          <div class="bico-toggle-row">
+            <input type="checkbox" id="bicoAtivo" checked>
+            <label for="bicoAtivo">Ativo</label>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-clear hidden" id="bicoCancelarEdicao">&#x2715; Cancelar</button>
+          <button type="submit" class="btn btn-submit purple" id="bicoSubmitBtn">&#x2795; Adicionar Bico Fixo</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="bico-filters-row">
+      <select id="bicoFiltroStatus">
+        <option value="">Todos os status</option>
+        <option value="ativo">Somente ativos</option>
+        <option value="inativo">Somente inativos</option>
+      </select>
+      <select id="bicoFiltroPosto"><option value="">Todos os postos</option></select>
+    </div>
+
+    <div class="bico-list" id="bicoLista"><p class="empty-state">Nenhum bico fixo cadastrado.</p></div>
+  </div>
+
+  <!-- ABA: PAGAMENTOS -->
+  <div class="tab-panel hidden" id="tab-pagamentos">
+    <div class="pag-filters-row">
+      <div>
+        <label style="display:block;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-bottom:5px;">De</label>
+        <input type="date" id="pagDataDe">
+      </div>
+      <div>
+        <label style="display:block;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-bottom:5px;">Até</label>
+        <input type="date" id="pagDataAte">
+      </div>
+    </div>
+    <div class="pag-filters-row">
+      <select id="pagColaborador"><option value="">Todos os colaboradores</option></select>
+      <select id="pagStatus">
+        <option value="">Todos os status</option>
+        <option value="pendente">Somente pendentes</option>
+        <option value="pago">Somente pagos</option>
+      </select>
+    </div>
+
+    <div class="pag-summary">
+      <div class="pag-summary-card">
+        <div class="pag-summary-value col-blue" id="pagTotalGeral">R$ 0,00</div>
+        <div class="pag-summary-label">Total período</div>
+      </div>
+      <div class="pag-summary-card">
+        <div class="pag-summary-value col-green" id="pagTotalPago">R$ 0,00</div>
+        <div class="pag-summary-label">Pago</div>
+      </div>
+      <div class="pag-summary-card">
+        <div class="pag-summary-value col-orange" id="pagTotalPendente">R$ 0,00</div>
+        <div class="pag-summary-label">Pendente</div>
+      </div>
+    </div>
+
+    <div id="pagGrupos"><p class="empty-state">Nenhum registro encontrado no período.</p></div>
+  </div>
+
+  <!-- ABA: ALERTAS DE FT (detecção automática de pendências por posto) -->
+  <div class="tab-panel hidden" id="tab-alertas">
+    <h2 class="col-blue">&#x2699;&#xFE0F; Configurar Alertas de FT</h2>
+    <p style="font-size:.82rem;color:var(--muted);margin:-6px 0 16px;">Defina os postos monitorados e os períodos a verificar. O alerta dispara automaticamente conforme a <strong style="color:var(--text);">escala real de cada posto</strong>:</p>
+
+    <div class="alertas-info-box" id="alertasInfoBox">
+      <div class="info-titulo">&#x1F4CC; Escalas configuradas</div>
+      <div id="alertasInfoLista"><span class="info-posto-linha">Nenhum posto monitorado ainda.</span></div>
+    </div>
+
+    <h2 class="col-amber">&#x1F514; Períodos a Verificar</h2>
+    <div class="periodo-toggle-row">
+      <button type="button" class="periodo-toggle-btn" id="btnPeriodoDia">&#x2600;&#xFE0F; Dia — <span class="periodo-status">Inativo</span></button>
+      <button type="button" class="periodo-toggle-btn" id="btnPeriodoNoite">&#x1F319; Noite — <span class="periodo-status">Inativo</span></button>
+    </div>
+
+    <h2 class="col-danger">&#x1F4CD; Postos Monitorados</h2>
+    <div id="listaPostosMonitorados"><p class="empty-state">Nenhum posto monitorado ainda.</p></div>
+
+    <div class="add-row">
+      <input type="text" id="inputPostoMonitorado" placeholder="Nome do posto a monitorar…" maxlength="80">
+      <button class="btn-add" id="btnAddPostoMonitorado">+ Adicionar</button>
+    </div>
+
+    <div class="section-sep">Escalas de Turnos por Posto</div>
+    <p style="font-size:.8rem;color:var(--muted);margin-top:-8px;">Configure os horários de entrada de cada posto para o sistema detectar FTs pendentes.</p>
+    <div class="escala-editor-row">
+      <select id="escalaSelectPosto"><option value="">— Selecione um posto —</option></select>
+      <button type="button" class="btn-add" id="btnEditarEscala">&#x1F58A;&#xFE0F; Editar</button>
+    </div>
+
+    <button type="button" class="btn-force-sync" id="btnForcarSyncAlertas" style="margin-top:18px;">&#x2601;&#xFE0F; Forçar Sincronização com Firebase</button>
+    <button type="button" class="btn-force-sync" id="btnReconfigurarBanco" style="margin-top:10px;background:linear-gradient(135deg, var(--accent4), #c0392b);">&#x1F510; Reconfigurar Banco de Dados</button>
+    <button type="button" class="btn-force-sync" id="btnZerarDadosLocais" style="margin-top:10px;background:linear-gradient(135deg, var(--danger), #a83232);">&#x1F5D1;&#xFE0F; Zerar Todos os Dados Locais</button>
+
+    <div class="btn-row">
+      <button type="button" class="btn btn-clear" id="btnFecharAlertas">&#x2715; Fechar</button>
+      <button type="button" class="btn-test-alerta" id="btnTestarAlerta">&#x1F514; Testar Alerta Agora</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: editar escala de turnos de um posto -->
+<div class="modal-overlay" id="modalEscala">
+  <div class="modal-box wide">
+    <div class="modal-title" id="modalEscalaTitulo">&#x1F550; Escala do Posto</div>
+    <div class="field">
+      <div class="field-label col-amber"><span class="dot bg-amber"></span>&#x2600;&#xFE0F; Entrada — Turno Dia</div>
+      <div id="escalaCamposDia"></div>
+    </div>
+    <div class="field">
+      <div class="field-label col-blue"><span class="dot bg-blue"></span>&#x1F319; Entrada/Rendição — Turno Noite</div>
+      <div id="escalaCamposNoite"></div>
+    </div>
+    <p style="font-size:.72rem;color:var(--muted);margin:-6px 0 14px;">Dica: se todos os dias têm o mesmo horário, preencha só a Segunda e toque em "Aplicar a todos".</p>
+    <div class="btn-row">
+      <button type="button" class="btn btn-clear" id="btnAplicarTodosDia" style="flex:1;">Copiar Dia p/ todos</button>
+      <button type="button" class="btn btn-clear" id="btnAplicarTodosNoite" style="flex:1;">Copiar Noite p/ todos</button>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn btn-clear" id="btnFecharModalEscala">&#x2715; Fechar</button>
+      <button type="button" class="btn btn-submit" id="btnSalvarEscala">&#x1F4BE; Salvar Escala</button>
+    </div>
+  </div>
+</div>
+
+<!-- Alertas flutuantes de lançamento por posto -->
+<div class="floating-alerts" id="floatingAlerts"></div>
+
+<!-- Modal de duplicata -->
+<div class="modal-overlay" id="modalDuplicata">
+  <div class="modal-box">
+    <div class="modal-icon">&#x1F6AB;</div>
+    <div class="modal-title">FT já registrada!</div>
+    <div class="modal-body">
+      <strong id="modal-colab-nome"></strong>
+      <div class="modal-detail"><span>&#x1F4C5;</span><span id="modal-detalhe"></span></div>
+      <div class="modal-detail"><span>&#x1F4A1;</span><span>Para outro turno no mesmo dia, selecione um horário diferente.</span></div>
+    </div>
+    <button class="btn-modal-ok" id="btnModalOk">&#x2714; Entendido</button>
+  </div>
+</div>
+
+<!-- Modal de edição de FT (Histórico) -->
+<div class="modal-overlay" id="modalEditarFT">
+  <div class="modal-box wide">
+    <div class="modal-title">&#x270F;&#xFE0F; Editar FT</div>
+    <form id="editForm" novalidate>
+      <div class="field">
+        <div class="field-label col-amber"><span class="dot bg-amber"></span>Posto</div>
+        <select id="edPosto" required></select>
+      </div>
+      <div class="field">
+        <div class="field-label col-orange"><span class="dot bg-orange"></span>Motivo</div>
+        <select id="edMotivo" required>
+          <option value="">-- Selecione --</option>
+          <option>Afastamento</option><option>Atestado</option><option>Bico Fixo</option>
+          <option>Cobertura de Férias</option><option>Extra</option><option>Falta de Efetivo</option>
+          <option>Folga do Vigia</option><option>Remanejamento Interno</option><option>Suspensão</option>
+          <option>Treinamento</option><option value="__outro__">&#x270F;&#xFE0F; Outro (digitar)</option>
+        </select>
+        <div class="motivo-outro-wrap" id="ed-motivo-outro-wrap">
+          <input type="text" id="edMotivoOutro" placeholder="Descreva o motivo…" maxlength="100">
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label col-blue"><span class="dot bg-blue"></span>Horário</div>
+        <input type="text" id="edHorario" placeholder="Ex: 07:00 – 17:00" required>
+      </div>
+      <div class="field">
+        <div class="field-label col-green"><span class="dot bg-green"></span>Quem está indo</div>
+        <select id="edSubstituto" required></select>
+      </div>
+      <div class="field">
+        <div class="field-label col-danger"><span class="dot bg-danger"></span>Quem faltou <span style="font-size:.7rem;color:var(--muted);font-weight:400;text-transform:none;">(opcional)</span></div>
+        <select id="edQuemFaltou"><option value="">-- Nenhum --</option></select>
+      </div>
+      <div class="field">
+        <div class="field-label col-green"><span class="dot bg-green"></span>Valor (R$)</div>
+        <div class="input-prefix"><span>R$</span><input type="number" id="edValor" min="0" step="0.01"></div>
+      </div>
+      <div class="field">
+        <div class="field-label col-blue"><span class="dot bg-blue"></span>Data / Hora</div>
+        <input type="datetime-local" id="edDataHora" required>
+      </div>
+      <div class="field">
+        <div class="field-label col-blue"><span class="dot bg-blue"></span>Observação</div>
+        <textarea id="edObservacao" maxlength="300"></textarea>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-clear" id="btnEditCancelar">&#x2715; Cancelar</button>
+        <button type="submit" class="btn btn-submit">&#x1F4BE; Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   MÓDULO 0 — CONFIGURAÇÃO INICIAL (credenciais do banco de dados)
+   Exibe uma tela obrigatória na primeira vez que o sistema abre
+   neste aparelho, pedindo as credenciais do Firebase. Só libera
+   o uso do app depois que uma configuração válida é salva.
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  var CONFIG_KEY = 'ft_firebase_user_config';
+  var CAMPOS = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+  var DATA_KEYS = ['ft_colaboradores', 'ft_postos', 'ft_registros', 'ft_bico_fixo', 'ft_horarios_custom', 'bico_horarios_custom', 'ft_alertas_ciente', 'ft_alertas_config', 'ft_alertas_postos_v2'];
+
+  function getConfig() {
+    try { return JSON.parse(localStorage.getItem(CONFIG_KEY) || 'null'); } catch (e) { return null; }
+  }
+  window.FT_getFirebaseConfig = getConfig;
+
+  function configValido(cfg) {
+    if (!cfg) return false;
+    return CAMPOS.every(function (c) { return typeof cfg[c] === 'string' && cfg[c].trim().length > 0; });
+  }
+
+  function limparDadosLocais() {
+    DATA_KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+    try { if (window.indexedDB) indexedDB.deleteDatabase('folga_trabalhada_db'); } catch (e) {}
+  }
+
+  function parseColado(texto) {
+    var resultado = {};
+    CAMPOS.forEach(function (c) {
+      var re = new RegExp(c + '\\s*:\\s*["\']([^"\']+)["\']');
+      var m = texto.match(re);
+      if (m) resultado[c] = m[1];
+    });
+    return resultado;
+  }
+
+  function mostrarErro(msg) {
+    var el = document.getElementById('setupErro');
+    if (el) el.textContent = msg || '';
+  }
+
+  function inicializarTela() {
+    var overlay = document.getElementById('setupInicialOverlay');
+    if (!overlay) return;
+
+    if (configValido(getConfig())) { overlay.classList.remove('show'); return; }
+    overlay.classList.add('show');
+
+    document.getElementById('btnSetupColar').addEventListener('click', function () {
+      var texto = document.getElementById('setupColarConfig').value || '';
+      var res = parseColado(texto);
+      var achou = Object.keys(res).length > 0;
+      CAMPOS.forEach(function (c) {
+        if (res[c]) document.getElementById('setup' + c.charAt(0).toUpperCase() + c.slice(1)).value = res[c];
+      });
+      mostrarErro(achou ? '' : 'Não encontrei os campos nesse texto. Confira o formato ou preencha manualmente abaixo.');
+    });
+
+    document.getElementById('btnSetupConfirmar').addEventListener('click', function () {
+      var cfg = {};
+      CAMPOS.forEach(function (c) {
+        var el = document.getElementById('setup' + c.charAt(0).toUpperCase() + c.slice(1));
+        cfg[c] = el ? el.value.trim() : '';
+      });
+      if (!configValido(cfg)) { mostrarErro('Preencha todos os campos antes de continuar.'); return; }
+      mostrarErro('');
+      limparDadosLocais();
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+      location.reload();
+    });
+  }
+
+  // Expõe utilitário para reconfigurar/zerar a partir de outras telas do app
+  window.FT_reconfigurarBanco = function () {
+    localStorage.removeItem(CONFIG_KEY);
+    limparDadosLocais();
+    location.reload();
+  };
+  window.FT_zerarDadosLocais = function () {
+    limparDadosLocais();
+    location.reload();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarTela);
+  } else {
+    inicializarTela();
+  }
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO 1 — CAMADA DE DADOS (IndexedDB + localStorage fallback)
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  var DB_NAME = 'folga_trabalhada_db';
+  var DB_VERSION = 1;
+  var STORE_DATA = 'app_data';
+  var STORE_QUEUE = 'sync_queue';
+  var db = null;
+
+  function openDB(cb) {
+    if (db) { cb(db); return; }
+    if (!window.indexedDB) { cb(null); return; }
+    var req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = function (e) {
+      var d = e.target.result;
+      if (!d.objectStoreNames.contains(STORE_DATA)) d.createObjectStore(STORE_DATA);
+      if (!d.objectStoreNames.contains(STORE_QUEUE)) {
+        var qs = d.createObjectStore(STORE_QUEUE, { keyPath: 'qid', autoIncrement: true });
+        qs.createIndex('by_ts', 'ts');
+      }
+    };
+    req.onsuccess = function (e) { db = e.target.result; cb(db); };
+    req.onerror = function () { console.warn('[Store] IndexedDB indisponível — usando localStorage.'); db = null; cb(null); };
+  }
+
+  window.FT_Store = {
+    get: function (key) {
+      return new Promise(function (resolve) {
+        openDB(function (d) {
+          if (!d) { resolve(FT_Store.getSync(key)); return; }
+          var tx = d.transaction(STORE_DATA, 'readonly');
+          var req = tx.objectStore(STORE_DATA).get(key);
+          req.onsuccess = function () { resolve(req.result !== undefined ? req.result : null); };
+          req.onerror = function () { resolve(FT_Store.getSync(key)); };
+        });
+      });
+    },
+    set: function (key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+      return new Promise(function (resolve) {
+        openDB(function (d) {
+          if (!d) { resolve(); return; }
+          var tx = d.transaction(STORE_DATA, 'readwrite');
+          var req = tx.objectStore(STORE_DATA).put(value, key);
+          req.onsuccess = function () { resolve(); };
+          req.onerror = function () { resolve(); };
+        });
+      });
+    },
+    getSync: function (key) {
+      try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; }
+    }
+  };
+
+  window.FT_SyncQueue = {
+    enqueue: function (op, store, payload) {
+      return new Promise(function (resolve) {
+        openDB(function (d) {
+          if (!d) { resolve(); return; }
+          var entry = { op: op, store: store, payload: payload, ts: Date.now() };
+          var tx = d.transaction(STORE_QUEUE, 'readwrite');
+          tx.objectStore(STORE_QUEUE).add(entry);
+          tx.oncomplete = function () { resolve(); SyncEngine.updateBadge(); };
+          tx.onerror = function () { resolve(); };
+        });
+      });
+    },
+    getAll: function () {
+      return new Promise(function (resolve) {
+        openDB(function (d) {
+          if (!d) { resolve([]); return; }
+          var tx = d.transaction(STORE_QUEUE, 'readonly');
+          var req = tx.objectStore(STORE_QUEUE).getAll();
+          req.onsuccess = function () { resolve(req.result || []); };
+          req.onerror = function () { resolve([]); };
+        });
+      });
+    },
+    remove: function (qid) {
+      return new Promise(function (resolve) {
+        openDB(function (d) {
+          if (!d) { resolve(); return; }
+          var tx = d.transaction(STORE_QUEUE, 'readwrite');
+          tx.objectStore(STORE_QUEUE).delete(qid);
+          tx.oncomplete = function () { resolve(); SyncEngine.updateBadge(); };
+          tx.onerror = function () { resolve(); };
+        });
+      });
+    },
+    count: function () {
+      return new Promise(function (resolve) {
+        openDB(function (d) {
+          if (!d) { resolve(0); return; }
+          var tx = d.transaction(STORE_QUEUE, 'readonly');
+          var req = tx.objectStore(STORE_QUEUE).count();
+          req.onsuccess = function () { resolve(req.result || 0); };
+          req.onerror = function () { resolve(0); };
+        });
+      });
+    }
+  };
+
+  /* ── Motor de sincronização ──────────────────────────────
+     Mantém o comportamento já corrigido do sistema original:
+     - watchdog que destrava o flush se uma gravação remota travar
+       sem resolver nem rejeitar (rede instável)
+     - timeout de 12s por item, tratado como falha (mantém na fila)
+     - status "error" quando sobra algo pendente mesmo online
+     - retry automático a cada 30s
+  */
+  window.SyncEngine = {
+    _online: navigator.onLine,
+    _syncing: false,
+    _remoteHandler: null,
+    _lastSyncError: null,
+    _lastSyncErrorTs: null,
+    _watchdogId: null,
+    _log: [],
+
+    setRemote: function (fn) { this._remoteHandler = fn; this.flush(); },
+
+    logDiag: function (msg) {
+      this._log.unshift('[' + new Date().toLocaleTimeString('pt-BR') + '] ' + msg);
+      if (this._log.length > 100) this._log.length = 100;
+      var el = document.getElementById('diag-sync-log');
+      if (el) el.innerHTML = this._log.map(function (l) { return '<div>' + l + '</div>'; }).join('');
+    },
+
+    updateStatus: function (state) {
+      var el = document.getElementById('sync-status');
+      var label = document.getElementById('sync-label');
+      if (!el || !label) return;
+      el.className = state;
+      var map = { online: 'Online', offline: 'Offline', syncing: 'Sincronizando…', error: 'Falha ao sincronizar' };
+      label.textContent = map[state] || state;
+      if (state === 'error') {
+        el.onclick = function () { toggleDiagPanel(true); };
+        el.title = this._lastSyncError ? ('Falha: ' + this._lastSyncError + ' — toque para diagnosticar') : 'Toque para diagnosticar';
+      } else {
+        el.onclick = null;
+        el.title = 'Status da conexão';
+      }
+    },
+
+    updateBadge: function () {
+      var self = this;
+      FT_SyncQueue.count().then(function (n) {
+        var badge = document.getElementById('pending-badge');
+        var cnt = document.getElementById('pending-count');
+        if (!badge || !cnt) return;
+        cnt.textContent = n;
+        badge.classList.toggle('visible', n > 0);
+      });
+    },
+
+    flush: function () {
+      var self = this;
+      if (self._syncing || !self._online || !self._remoteHandler) return Promise.resolve();
+
+      self._syncing = true;
+      self.updateStatus('syncing');
+
+      clearTimeout(self._watchdogId);
+      self._watchdogId = setTimeout(function () {
+        if (self._syncing) {
+          self.logDiag('⚠️ Watchdog: flush travado há 25s — destravando.');
+          self._syncing = false;
+          self.updateStatus(self._online ? 'error' : 'offline');
+        }
+      }, 25000);
+
+      function comTimeout(promise, ms) {
+        return new Promise(function (resolve) {
+          var done = false;
+          var timer = setTimeout(function () { if (!done) { done = true; resolve(false); } }, ms);
+          promise.then(function (ok) {
+            if (done) return; done = true; clearTimeout(timer); resolve(ok);
+          }).catch(function (err) {
+            if (done) return; done = true; clearTimeout(timer);
+            self._lastSyncError = (err && err.message) || String(err);
+            self.logDiag('❌ erro: ' + self._lastSyncError);
+            resolve(false);
+          });
+        });
+      }
+
+      return FT_SyncQueue.getAll().then(function (entries) {
+        if (!entries.length) {
+          self._syncing = false;
+          clearTimeout(self._watchdogId);
+          self.updateStatus('online');
+          return;
+        }
+        return entries.reduce(function (chain, entry) {
+          return chain.then(function () {
+            var handler = self._remoteHandler(entry);
+            return comTimeout(handler, 12000).then(function (ok) {
+              if (ok !== false) return FT_SyncQueue.remove(entry.qid);
+            });
+          });
+        }, Promise.resolve());
+      }).then(function () {
+        self._syncing = false;
+        clearTimeout(self._watchdogId);
+        return FT_SyncQueue.count().then(function (restantes) {
+          self.updateStatus(restantes > 0 && self._online ? 'error' : (self._online ? 'online' : 'offline'));
+          self.updateBadge();
+        });
+      }).catch(function () {
+        self._syncing = false;
+        clearTimeout(self._watchdogId);
+        self.updateStatus(self._online ? 'online' : 'offline');
+      });
+    },
+
+    init: function () {
+      var self = this;
+      self.updateStatus(navigator.onLine ? 'online' : 'offline');
+      self.updateBadge();
+
+      window.addEventListener('online', function () {
+        self._online = true;
+        if (window.showToast) showToast('🌐 Conexão restabelecida — sincronizando…', 'success');
+        self.flush();
+      });
+      window.addEventListener('offline', function () {
+        self._online = false;
+        self.updateStatus('offline');
+        if (window.showToast) showToast('📴 Sem conexão — dados salvos localmente.', 'error');
+        self.updateBadge();
+      });
+
+      openDB(function () {
+        ['ft_registros', 'ft_colaboradores', 'ft_postos', 'ft_bico_fixo'].forEach(function (key) {
+          var raw = localStorage.getItem(key);
+          if (raw) { try { FT_Store.set(key, JSON.parse(raw)); } catch (e) {} }
+        });
+        if (navigator.onLine) self.flush();
+      });
+
+      setInterval(function () {
+        if (!self._online || self._syncing) return;
+        FT_SyncQueue.count().then(function (n) { if (n > 0) self.flush(); });
+      }, 30000);
+    }
+  };
+
+  function toggleDiagPanel(show) {
+    var p = document.getElementById('diag-sync-panel');
+    if (p) p.classList.toggle('visible', show);
+  }
+  document.getElementById('diag-sync-btn').addEventListener('click', function () { toggleDiagPanel(true); });
+  document.getElementById('pending-badge').addEventListener('click', function () { toggleDiagPanel(true); });
+  document.getElementById('diagClose').addEventListener('click', function () { toggleDiagPanel(false); });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { SyncEngine.init(); });
+  } else {
+    SyncEngine.init();
+  }
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO 2 — FIREBASE (ligação com o motor de sincronização)
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  function waitFirebaseAndInit(tries) {
+    tries = tries || 0;
+
+    var FIREBASE_CONFIG = window.FT_getFirebaseConfig ? window.FT_getFirebaseConfig() : null;
+    if (!FIREBASE_CONFIG) {
+      // Sem credenciais configuradas ainda — a tela de Configuração Inicial cuida disso.
+      return;
+    }
+
+    if (typeof firebase === 'undefined') {
+      if (tries > 40) { console.warn('[Firebase] SDK não carregou — operando em modo local.'); return; }
+      setTimeout(function () { waitFirebaseAndInit(tries + 1); }, 250);
+      return;
+    }
+    try {
+      var app = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(FIREBASE_CONFIG);
+      var db = firebase.firestore();
+      var DOC_REF = db.collection('ft_app_data').doc('main');
+
+      // Grava cada entrada da fila no documento único (mesma estratégia do sistema original)
+      SyncEngine.setRemote(function (entry) {
+        var update = {};
+        update[entry.store] = entry.payload;
+        return DOC_REF.set(update, { merge: true }).then(function () { return true; });
+      });
+
+      // Listener em tempo real: aplica alterações vindas de outros dispositivos
+      DOC_REF.onSnapshot(function (snap) {
+        if (!snap.exists) return;
+        var data = snap.data() || {};
+        ['ft_colaboradores', 'ft_postos', 'ft_registros', 'ft_bico_fixo'].forEach(function (key) {
+          if (data[key] === undefined) return;
+          var local = FT_Store.getSync(key);
+          if (JSON.stringify(local) !== JSON.stringify(data[key])) {
+            localStorage.setItem(key, JSON.stringify(data[key]));
+            FT_Store.set(key, data[key]);
+            if (window.FT_onRemoteUpdate) window.FT_onRemoteUpdate(key, data[key]);
+          }
+        });
+      }, function (err) {
+        SyncEngine._lastSyncError = err.message;
+        SyncEngine.logDiag('❌ listener: ' + err.message);
+      });
+    } catch (e) {
+      console.error('[Firebase] Erro na inicialização:', e);
+    }
+  }
+
+  waitFirebaseAndInit();
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO 3 — UTILITÁRIOS
+   ════════════════════════════════════════════════════════════ */
+window.showToast = function (msg, tipo) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (tipo || 'success') + ' show';
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(function () { t.classList.remove('show'); }, 3500);
+};
+
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function gerarId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+function sortAlpha(arr) {
+  return arr.slice().sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }); });
+}
+function fillSelect(id, items, preserve) {
+  var sel = document.getElementById(id);
+  if (!sel) return;
+  var prev = preserve ? sel.value : '';
+  sel.innerHTML = '<option value="">-- Selecione --</option>';
+  sortAlpha(items).forEach(function (item) {
+    var opt = document.createElement('option');
+    opt.value = item.nome;
+    opt.textContent = item.nome;
+    sel.appendChild(opt);
+  });
+  if (prev) sel.value = prev;
+}
+function fmtMoedaBR(v) { return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+function fmtDataHoraBR(iso) {
+  if (!iso) return '—';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toTimeString().slice(0, 5);
+}
+
+// ── Carregador de bibliotecas com fallback em 3 camadas ──
+// Camada 1: <script> já carregado no <head> (CDN cdnjs)
+// Camada 2: injeção dinâmica via unpkg
+// Camada 3: injeção dinâmica via jsDelivr
+// Se as três falharem, o chamador deve orientar o uso de um recurso sem dependências (ex: CSV).
+window.FT_LIB_SOURCES = {
+  xlsx: [
+    'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js',
+    'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
+  ],
+  jspdf: [
+    'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js',
+    'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'
+  ]
+};
+window.FT_ensureLib = function (checkFn, sources, onReady, onFail) {
+  if (checkFn()) { onReady(); return; }
+  var i = 0;
+  function tryNext() {
+    if (i >= sources.length) { onFail(); return; }
+    var url = sources[i++];
+    var s = document.createElement('script');
+    s.src = url;
+    s.onload = function () { if (checkFn()) onReady(); else tryNext(); };
+    s.onerror = tryNext;
+    document.head.appendChild(s);
+  }
+  tryNext();
+};
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO 4 — NAVEGAÇÃO ENTRE ABAS
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  var btns = document.querySelectorAll('.tab-btn');
+  btns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      btns.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.add('hidden'); });
+      document.getElementById(btn.dataset.tab).classList.remove('hidden');
+      if (window.FT_onTabShow) window.FT_onTabShow(btn.dataset.tab);
+    });
+  });
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO 5 — CADASTROS (Colaboradores / Postos)
+   ════════════════════════════════════════════════════════════ */
+var CadastrosModule = (function () {
+  'use strict';
+
+  var LS_COLAB = 'ft_colaboradores';
+  var LS_POSTOS = 'ft_postos';
+
+  function loadStorage(key) {
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { return []; }
+  }
+  function saveStorage(key, data) {
+    try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) {}
+    if (window.FT_Store) FT_Store.set(key, data);
+    if (window.FT_SyncQueue) {
+      FT_SyncQueue.enqueue('set', key, data).then(function () {
+        if (window.SyncEngine) SyncEngine.flush();
+      });
+    }
+  }
+
+  var colaboradores = loadStorage(LS_COLAB);
+  var postos = loadStorage(LS_POSTOS);
+
+  function renderColaboradoresList() {
+    var list = document.getElementById('listaColaboradores');
+    var b = document.getElementById('badge-colaboradores');
+    if (b) b.textContent = colaboradores.length || 0;
+    if (!colaboradores.length) { list.innerHTML = '<p class="empty-state">Nenhum colaborador cadastrado.</p>'; return; }
+    list.innerHTML = sortAlpha(colaboradores).map(function (c) {
+      return '<div class="list-item" data-id="' + c.id + '">' +
+        '<span>&#x1F464; ' + escHtml(c.nome) + '</span>' +
+        '<div style="display:flex;gap:4px;flex-shrink:0;">' +
+          '<button class="btn-remove" data-id="' + c.id + '" data-tipo="colab" title="Remover">&#x2715;</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function renderPostosList() {
+    var list = document.getElementById('listaPostos');
+    var b = document.getElementById('badge-postos');
+    if (b) b.textContent = postos.length || 0;
+    if (!postos.length) { list.innerHTML = '<p class="empty-state">Nenhum posto cadastrado.</p>'; return; }
+    list.innerHTML = sortAlpha(postos).map(function (p) {
+      return '<div class="list-item" data-id="' + p.id + '">' +
+        '<span>&#x1F4CD; ' + escHtml(p.nome) + '</span>' +
+        '<div style="display:flex;gap:4px;flex-shrink:0;">' +
+          '<button class="btn-remove" data-id="' + p.id + '" data-tipo="posto" title="Remover">&#x2715;</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function refreshFTSelects() {
+    fillSelect('posto', postos, true);
+    fillSelect('substituto', colaboradores, true);
+    if (window.FTModule) window.FTModule.refreshFaltouIfVisible();
+  }
+
+  function addColaborador() {
+    var input = document.getElementById('inputColaborador');
+    var nome = input.value.trim();
+    if (!nome) return;
+    if (colaboradores.some(function (c) { return c.nome.toLowerCase() === nome.toLowerCase(); })) {
+      showToast('⚠️ Colaborador já cadastrado.', 'error'); return;
+    }
+    colaboradores.push({ id: gerarId(), nome: nome });
+    saveStorage(LS_COLAB, colaboradores);
+    input.value = '';
+    renderColaboradoresList();
+    refreshFTSelects();
+    showToast('✅ Colaborador adicionado.', 'success');
+  }
+
+  function removeColaborador(id) {
+    var item = colaboradores.find(function (c) { return c.id === id; });
+    if (!item) return;
+    if (!confirm('Remover colaborador "' + item.nome + '"?')) return;
+    colaboradores = colaboradores.filter(function (c) { return c.id !== id; });
+    saveStorage(LS_COLAB, colaboradores);
+    renderColaboradoresList();
+    refreshFTSelects();
+    showToast('🗑️ Colaborador removido.', 'success');
+  }
+
+  function addPosto() {
+    var input = document.getElementById('inputPosto');
+    var nome = input.value.trim();
+    if (!nome) return;
+    if (postos.some(function (p) { return p.nome.toLowerCase() === nome.toLowerCase(); })) {
+      showToast('⚠️ Posto já cadastrado.', 'error'); return;
+    }
+    postos.push({ id: gerarId(), nome: nome });
+    saveStorage(LS_POSTOS, postos);
+    input.value = '';
+    renderPostosList();
+    refreshFTSelects();
+    showToast('✅ Posto adicionado.', 'success');
+  }
+
+  function removePosto(id) {
+    var item = postos.find(function (p) { return p.id === id; });
+    if (!item) return;
+    if (!confirm('Remover posto "' + item.nome + '"?')) return;
+    postos = postos.filter(function (p) { return p.id !== id; });
+    saveStorage(LS_POSTOS, postos);
+    renderPostosList();
+    refreshFTSelects();
+    showToast('🗑️ Posto removido.', 'success');
+  }
+
+  document.getElementById('btnAddColaborador').addEventListener('click', addColaborador);
+  document.getElementById('inputColaborador').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addColaborador(); } });
+  document.getElementById('btnAddPosto').addEventListener('click', addPosto);
+  document.getElementById('inputPosto').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addPosto(); } });
+
+  document.getElementById('listaColaboradores').addEventListener('click', function (e) {
+    var btn = e.target.closest('.btn-remove');
+    if (btn) removeColaborador(btn.dataset.id);
+  });
+  document.getElementById('listaPostos').addEventListener('click', function (e) {
+    var btn = e.target.closest('.btn-remove');
+    if (btn) removePosto(btn.dataset.id);
+  });
+
+  // Reage a atualizações vindas de outro dispositivo (Firebase onSnapshot)
+  window.FT_onRemoteUpdate = function (key, value) {
+    if (key === LS_COLAB) { colaboradores = value || []; renderColaboradoresList(); refreshFTSelects(); }
+    if (key === LS_POSTOS) { postos = value || []; renderPostosList(); refreshFTSelects(); }
+  };
+
+  renderColaboradoresList();
+  renderPostosList();
+
+  return {
+    getColaboradores: function () { return colaboradores; },
+    getPostos: function () { return postos; },
+    refreshFTSelects: refreshFTSelects
+  };
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO 6 — ABA "NOVA FT"
+   ════════════════════════════════════════════════════════════ */
+var FTModule = (function () {
+  'use strict';
+
+  // Motivos que exigem identificar um ausente ("quem faltou").
+  // Falta de Efetivo, Extra e Treinamento NÃO têm ausente — só "quem está indo".
+  var MOTIVOS_COM_FALTOU = ['Atestado', 'Suspensão', 'Folga do Vigia', 'Cobertura de Férias', 'Afastamento', 'Remanejamento Interno'];
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function setDefaultDateTime() {
+    var now = new Date();
+    document.getElementById('dataHora').value =
+      now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+  }
+
+  function fillSelectFaltou(id, items, comFerias, valorAtual) {
+    var sel = document.getElementById(id);
+    var prev = valorAtual !== undefined ? valorAtual : sel.value;
+    sel.innerHTML = '<option value="">-- Selecione --</option>';
+    if (comFerias) {
+      var optFerias = document.createElement('option');
+      optFerias.value = '🏖️ Férias';
+      optFerias.textContent = '🏖️ Férias (sem colaborador específico)';
+      sel.appendChild(optFerias);
+      var sep = document.createElement('option');
+      sep.disabled = true; sep.textContent = '──────────────────';
+      sel.appendChild(sep);
+    }
+    sortAlpha(items).forEach(function (item) {
+      var opt = document.createElement('option');
+      opt.value = item.nome; opt.textContent = item.nome;
+      sel.appendChild(opt);
+    });
+    if (prev) sel.value = prev;
+  }
+
+  function handleMotivoChange() {
+    var sel = document.getElementById('motivo');
+    var motivo = sel.value;
+    var outroWrap = document.getElementById('motivo-outro-wrap-ft');
+    var outroInput = document.getElementById('motivo-outro-ft');
+    var blockFaltou = document.getElementById('block-quem-faltou');
+    var selFaltou = document.getElementById('quemFaltou');
+    var hintFaltou = document.getElementById('hint-quem-faltou');
+    var labelFaltou = blockFaltou.querySelector('.field-label');
+
+    if (motivo === '__outro__') { outroWrap.classList.add('visible'); outroInput.focus(); }
+    else { outroWrap.classList.remove('visible'); outroInput.value = ''; }
+
+    if (motivo && motivo !== '__outro__' && MOTIVOS_COM_FALTOU.indexOf(motivo) !== -1) {
+      blockFaltou.classList.remove('hidden');
+      var colaboradores = CadastrosModule.getColaboradores();
+      if (motivo === 'Remanejamento Interno') {
+        labelFaltou.innerHTML = '<span class="dot bg-danger"></span>🔀 Quem foi remanejado';
+        hintFaltou.textContent = ''; hintFaltou.classList.remove('visible');
+        selFaltou.required = true;
+        fillSelectFaltou('quemFaltou', colaboradores, false);
+      } else if (motivo === 'Cobertura de Férias') {
+        labelFaltou.innerHTML = '<span class="dot bg-amber"></span>🏖️ Quem está de férias';
+        selFaltou.required = true;
+        hintFaltou.textContent = 'Selecione quem está de férias e está sendo coberto';
+        hintFaltou.classList.add('visible');
+        fillSelectFaltou('quemFaltou', colaboradores, true, selFaltou.value);
+      } else {
+        labelFaltou.innerHTML = '<span class="dot bg-danger"></span>🚨 Quem faltou';
+        selFaltou.required = true;
+        hintFaltou.textContent = ''; hintFaltou.classList.remove('visible');
+        fillSelectFaltou('quemFaltou', colaboradores, false);
+      }
+    } else {
+      blockFaltou.classList.add('hidden');
+      selFaltou.required = false;
+      selFaltou.value = '';
+    }
+  }
+
+  // ── Horários customizados ──
+  function loadHorariosCustom() { try { return JSON.parse(localStorage.getItem('ft_horarios_custom') || '[]'); } catch (e) { return []; } }
+  function saveHorariosCustom(list) { try { localStorage.setItem('ft_horarios_custom', JSON.stringify(list)); } catch (e) {} }
+
+  function renderHorarioChips() {
+    var wrap = document.getElementById('horario-saved-ft');
+    var custom = loadHorariosCustom();
+    wrap.innerHTML = custom.map(function (h) {
+      return '<span class="horario-chip" data-h="' + escHtml(h) + '">' + escHtml(h) + '</span>';
+    }).join('');
+  }
+
+  function ensureHorarioInSelect(valor) {
+    var sel = document.getElementById('horario');
+    var exists = Array.prototype.some.call(sel.options, function (o) { return o.value === valor; });
+    if (!exists) {
+      var opt = document.createElement('option');
+      opt.value = valor; opt.textContent = valor;
+      sel.appendChild(opt);
+    }
+    sel.value = valor;
+  }
+
+  function setupHorarioToggle() {
+    var btnToggle = document.getElementById('btn-toggle-horario-ft');
+    var wrap = document.getElementById('horario-custom-ft');
+    var input = document.getElementById('horario-custom-input-ft');
+    var btnSave = document.getElementById('btn-horario-save-ft');
+
+    btnToggle.addEventListener('click', function () { wrap.classList.toggle('visible'); if (wrap.classList.contains('visible')) input.focus(); });
+    btnSave.addEventListener('click', function () {
+      var v = input.value.trim();
+      if (!v) return;
+      var list = loadHorariosCustom();
+      if (list.indexOf(v) === -1) { list.push(v); saveHorariosCustom(list); renderHorarioChips(); }
+      ensureHorarioInSelect(v);
+      input.value = '';
+      wrap.classList.remove('visible');
+      showToast('✅ Horário adicionado.', 'success');
+    });
+    wrap.querySelector('.horario-saved-list') || null;
+    document.getElementById('horario-saved-ft').addEventListener('click', function (e) {
+      if (e.target.classList.contains('horario-chip')) {
+        ensureHorarioInSelect(e.target.dataset.h);
+        wrap.classList.remove('visible');
+      }
+    });
+    renderHorarioChips();
+  }
+
+  // ── Verificação de duplicata ──
+  // Regra preservada do sistema original: bloqueia quando o MESMO
+  // colaborador já tem FT no mesmo turno (mesmo horário) na mesma data,
+  // OU quando o MESMO posto já tem FT no mesmo turno na mesma data.
+  // Turnos diferentes no mesmo dia são permitidos.
+  function checkDuplicata(posto, horario, substituto, dataLancamento) {
+    var fts = FT_Store.getSync('ft_registros') || [];
+    var duplicataColab = fts.find(function (ft) {
+      var mesmaPessoa = (ft.substituto || '').trim().toLowerCase() === (substituto || '').trim().toLowerCase();
+      var mesmaData = (ft.dataHora || ft.criadoEm || '').slice(0, 10) === dataLancamento;
+      var mesmoTurno = (ft.horario || '').trim() === (horario || '').trim();
+      return mesmaPessoa && mesmaData && mesmoTurno;
+    });
+    var duplicataPosto = fts.find(function (ft) {
+      var mesmoPosto = (ft.posto || '').trim().toLowerCase() === (posto || '').trim().toLowerCase();
+      var mesmaData = (ft.dataHora || ft.criadoEm || '').slice(0, 10) === dataLancamento;
+      var mesmoTurno = (ft.horario || '').trim() === (horario || '').trim();
+      return mesmoPosto && mesmaData && mesmoTurno;
+    });
+    return duplicataColab ? { item: duplicataColab, motivo: 'Colaborador já possui FT neste turno.' }
+         : duplicataPosto ? { item: duplicataPosto, motivo: 'Posto já possui FT neste turno.' }
+         : null;
+  }
+
+  function submitForm(e) {
+    e.preventDefault();
+
+    var motivoSel = document.getElementById('motivo').value;
+    var motivoOtro = document.getElementById('motivo-outro-ft').value.trim();
+    var motivo = (motivoSel === '__outro__') ? motivoOtro : motivoSel;
+    var observacao = (document.getElementById('observacao').value || '').trim();
+    var posto = document.getElementById('posto').value;
+    var horario = document.getElementById('horario').value;
+    var substituto = document.getElementById('substituto').value;
+    var quemFaltou = document.getElementById('quemFaltou').value;
+    var valor = document.getElementById('valor').value;
+    var dataHora = document.getElementById('dataHora').value;
+
+    if (!posto || !motivoSel || !horario || !substituto || !dataHora) {
+      showToast('⚠️ Preencha todos os campos obrigatórios.', 'error'); return;
+    }
+    if (motivoSel === '__outro__' && !motivoOtro) {
+      showToast('⚠️ Descreva o motivo no campo de texto.', 'error'); return;
+    }
+    if (MOTIVOS_COM_FALTOU.indexOf(motivo) !== -1 && motivo !== 'Cobertura de Férias' && !quemFaltou) {
+      showToast('⚠️ Informe quem faltou.', 'error'); return;
+    }
+
+    var dataLancamento = dataHora.slice(0, 10);
+    var duplicata = checkDuplicata(posto, horario, substituto, dataLancamento);
+    if (duplicata) {
+      var dtFmt = new Date(dataLancamento + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      document.getElementById('modal-colab-nome').textContent = duplicata.motivo;
+      document.getElementById('modal-detalhe').textContent = 'Data: ' + dtFmt + '  ·  Turno: ' + horario + '  ·  Posto: ' + (duplicata.item.posto || '—');
+      document.getElementById('modalDuplicata').classList.add('show');
+      return;
+    }
+
+    var btn = document.getElementById('btnRegistrar');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin">&#x27F3;</span> Registrando…';
+
+    try {
+      var fts = FT_Store.getSync('ft_registros') || [];
+      fts.push({
+        id: gerarId(), posto: posto, motivo: motivo, horario: horario,
+        substituto: substituto || null, quemFaltou: quemFaltou || null,
+        observacao: observacao || null, valor: parseFloat(valor) || 0,
+        dataHora: dataHora, criadoEm: new Date().toISOString()
+      });
+      localStorage.setItem('ft_registros', JSON.stringify(fts));
+      if (window.FT_Store) FT_Store.set('ft_registros', fts);
+      if (window.FT_SyncQueue) FT_SyncQueue.enqueue('set', 'ft_registros', fts).then(function () {
+        if (window.SyncEngine) SyncEngine.flush();
+      });
+    } catch (e) { console.error('[FT] Erro ao salvar:', e); showToast('❌ Erro ao salvar. Tente novamente.', 'error'); btn.disabled = false; btn.innerHTML = '&#x1F4BE; Registrar FT'; return; }
+
+    setTimeout(function () {
+      showToast('✅ FT registrada com sucesso!', 'success');
+      document.getElementById('ftForm').reset();
+      setDefaultDateTime();
+      handleMotivoChange();
+      btn.disabled = false;
+      btn.innerHTML = '&#x1F4BE; Registrar FT';
+    }, 300);
+  }
+
+  document.getElementById('motivo').addEventListener('change', handleMotivoChange);
+  document.getElementById('ftForm').addEventListener('submit', submitForm);
+  document.getElementById('btnLimpar').addEventListener('click', function () {
+    document.getElementById('ftForm').reset();
+    setDefaultDateTime();
+    handleMotivoChange();
+  });
+  document.getElementById('btnModalOk').addEventListener('click', function () {
+    document.getElementById('modalDuplicata').classList.remove('show');
+  });
+
+  setupHorarioToggle();
+  setDefaultDateTime();
+  handleMotivoChange();
+  CadastrosModule.refreshFTSelects();
+
+  return {
+    refreshFaltouIfVisible: function () {
+      if (!document.getElementById('block-quem-faltou').classList.contains('hidden')) handleMotivoChange();
+    }
+  };
+}());
+
+document.getElementById('btnNovoCiclo').addEventListener('click', function () {
+  showToast('ℹ️ Recurso "Novo Ciclo" será reconstruído em fase futura.', 'error');
+});
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO 7 — DASHBOARD
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  function getRegistros() {
+    try { return JSON.parse(localStorage.getItem('ft_registros') || '[]'); } catch (e) { return []; }
+  }
+
+  function dataDoRegistro(ft) {
+    return (ft.dataHora || ft.criadoEm || '').slice(0, 10);
+  }
+
+  function filtrarPorPeriodo(lista, periodo) {
+    if (periodo === 'todos') return lista;
+    var hoje = new Date();
+    var limite;
+    if (periodo === 'mes') {
+      limite = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    } else if (periodo === '7d') {
+      limite = new Date(hoje); limite.setDate(limite.getDate() - 7);
+    } else if (periodo === '30d') {
+      limite = new Date(hoje); limite.setDate(limite.getDate() - 30);
+    } else {
+      return lista;
+    }
+    var limiteStr = limite.toISOString().slice(0, 10);
+    return lista.filter(function (ft) { return dataDoRegistro(ft) >= limiteStr; });
+  }
+
+  function fmtMoeda(v) {
+    return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function agrupar(lista, campo) {
+    var map = {};
+    lista.forEach(function (ft) {
+      var chave = (ft[campo] || '—').trim() || '—';
+      if (!map[chave]) map[chave] = { count: 0, valor: 0 };
+      map[chave].count += 1;
+      map[chave].valor += parseFloat(ft.valor) || 0;
+    });
+    return Object.keys(map).map(function (k) { return { nome: k, count: map[k].count, valor: map[k].valor }; })
+      .sort(function (a, b) { return b.count - a.count; });
+  }
+
+  function renderStats(lista) {
+    var totalFts = lista.length;
+    var valorTotal = lista.reduce(function (acc, ft) { return acc + (parseFloat(ft.valor) || 0); }, 0);
+    var ticketMedio = totalFts ? valorTotal / totalFts : 0;
+    var postosAtivos = {};
+    lista.forEach(function (ft) { if (ft.posto) postosAtivos[ft.posto] = true; });
+
+    document.getElementById('dashTotalFts').textContent = totalFts;
+    document.getElementById('dashValorTotal').textContent = fmtMoeda(valorTotal);
+    document.getElementById('dashTicketMedio').textContent = fmtMoeda(ticketMedio);
+    document.getElementById('dashPostosAtivos').textContent = Object.keys(postosAtivos).length;
+  }
+
+  function renderPorMotivo(lista) {
+    var el = document.getElementById('dashPorMotivo');
+    var grupos = agrupar(lista, 'motivo');
+    if (!grupos.length) { el.innerHTML = '<p class="empty-state">Sem registros no período.</p>'; return; }
+    var max = grupos[0].count;
+    el.innerHTML = grupos.map(function (g) {
+      var pct = max ? Math.round((g.count / max) * 100) : 0;
+      return '<div class="dash-bar-row">' +
+        '<div class="dash-bar-head"><strong>' + escHtml(g.nome) + '</strong><span>' + g.count + ' &middot; ' + fmtMoeda(g.valor) + '</span></div>' +
+        '<div class="dash-bar-track"><div class="dash-bar-fill" style="width:' + pct + '%"></div></div>' +
+        '</div>';
+    }).join('');
+  }
+
+  function renderRanking(elId, lista, campo, vazio) {
+    var el = document.getElementById(elId);
+    var grupos = agrupar(lista, campo).slice(0, 5);
+    if (!grupos.length) { el.innerHTML = '<p class="empty-state">' + vazio + '</p>'; return; }
+    el.innerHTML = grupos.map(function (g, i) {
+      return '<div class="dash-rank-item">' +
+        '<span class="rank-num">' + (i + 1) + '</span>' +
+        '<span class="rank-name">' + escHtml(g.nome) + '</span>' +
+        '<span class="rank-count">' + g.count + ' FT' + (g.count === 1 ? '' : 's') + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  function refresh() {
+    var periodo = document.getElementById('dashPeriodo').value;
+    var lista = filtrarPorPeriodo(getRegistros(), periodo);
+    renderStats(lista);
+    renderPorMotivo(lista);
+    renderRanking('dashTopPostos', lista, 'posto', 'Sem registros no período.');
+    renderRanking('dashTopColab', lista, 'substituto', 'Sem registros no período.');
+  }
+
+  document.getElementById('dashPeriodo').addEventListener('change', refresh);
+
+  // Encadeia com o hook de troca de aba (Módulo 4) sem sobrescrever outros módulos
+  var prevTabShow = window.FT_onTabShow;
+  window.FT_onTabShow = function (tab) {
+    if (typeof prevTabShow === 'function') prevTabShow(tab);
+    if (tab === 'tab-dashboard') refresh();
+  };
+
+  // Encadeia com atualizações remotas (Firebase) para manter o dashboard em dia
+  var prevRemoteUpdate = window.FT_onRemoteUpdate;
+  window.FT_onRemoteUpdate = function (key, value) {
+    if (typeof prevRemoteUpdate === 'function') prevRemoteUpdate(key, value);
+    if (key === 'ft_registros' && !document.getElementById('tab-dashboard').classList.contains('hidden')) refresh();
+  };
+})();
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO 8 — HISTÓRICO (filtros, edição, exportação CSV/Excel/PDF)
+   ════════════════════════════════════════════════════════════ */
+var HistoricoModule = (function () {
+  'use strict';
+
+  // ── Dados ──
+  function getRegistros() {
+    try { return JSON.parse(localStorage.getItem('ft_registros') || '[]'); } catch (e) { return []; }
+  }
+
+  function fmtMoeda(v) { return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function fmtDataHora(iso) {
+    if (!iso) return '—';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString('pt-BR') + ' ' + d.toTimeString().slice(0, 5);
+  }
+
+  function popularFiltros() {
+    var postos = window.CadastrosModule ? CadastrosModule.getPostos() : [];
+    var colaboradores = window.CadastrosModule ? CadastrosModule.getColaboradores() : [];
+    var registros = getRegistros();
+
+    var selPosto = document.getElementById('histPosto');
+    var prevPosto = selPosto.value;
+    selPosto.innerHTML = '<option value="">Todos</option>' +
+      sortAlpha(postos).map(function (p) { return '<option value="' + escHtml(p.nome) + '">' + escHtml(p.nome) + '</option>'; }).join('');
+    selPosto.value = prevPosto;
+
+    var selColab = document.getElementById('histColab');
+    var prevColab = selColab.value;
+    selColab.innerHTML = '<option value="">Todos</option>' +
+      sortAlpha(colaboradores).map(function (c) { return '<option value="' + escHtml(c.nome) + '">' + escHtml(c.nome) + '</option>'; }).join('');
+    selColab.value = prevColab;
+
+    var motivos = [];
+    registros.forEach(function (ft) { if (ft.motivo && motivos.indexOf(ft.motivo) === -1) motivos.push(ft.motivo); });
+    motivos.sort(function (a, b) { return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }); });
+    var selMotivo = document.getElementById('histMotivo');
+    var prevMotivo = selMotivo.value;
+    selMotivo.innerHTML = '<option value="">Todos</option>' +
+      motivos.map(function (m) { return '<option value="' + escHtml(m) + '">' + escHtml(m) + '</option>'; }).join('');
+    selMotivo.value = prevMotivo;
+  }
+
+  function getFiltrados() {
+    var lista = getRegistros();
+    var de = document.getElementById('histDataDe').value;
+    var ate = document.getElementById('histDataAte').value;
+    var posto = document.getElementById('histPosto').value;
+    var motivo = document.getElementById('histMotivo').value;
+    var colab = document.getElementById('histColab').value;
+    var busca = document.getElementById('histBusca').value.trim().toLowerCase();
+
+    return lista.filter(function (ft) {
+      var data = (ft.dataHora || ft.criadoEm || '').slice(0, 10);
+      if (de && data < de) return false;
+      if (ate && data > ate) return false;
+      if (posto && ft.posto !== posto) return false;
+      if (motivo && ft.motivo !== motivo) return false;
+      if (colab && ft.substituto !== colab) return false;
+      if (busca) {
+        var alvo = [ft.observacao, ft.substituto, ft.quemFaltou, ft.posto, ft.motivo].join(' ').toLowerCase();
+        if (alvo.indexOf(busca) === -1) return false;
+      }
+      return true;
+    }).sort(function (a, b) {
+      return (b.dataHora || b.criadoEm || '').localeCompare(a.dataHora || a.criadoEm || '');
+    });
+  }
+
+  function renderLista() {
+    var lista = getFiltrados();
+    var count = document.getElementById('histCount');
+    var valorTotal = document.getElementById('histValorTotal');
+    var el = document.getElementById('histLista');
+
+    count.textContent = lista.length;
+    valorTotal.textContent = fmtMoeda(lista.reduce(function (acc, ft) { return acc + (parseFloat(ft.valor) || 0); }, 0));
+
+    if (!lista.length) { el.innerHTML = '<p class="empty-state">Nenhum registro encontrado.</p>'; return; }
+
+    el.innerHTML = lista.map(function (ft) {
+      var quemFaltouHtml = ft.quemFaltou ? '<div class="hist-item-people">&#x1F6A8; Faltou: <strong>' + escHtml(ft.quemFaltou) + '</strong></div>' : '';
+      var obsHtml = ft.observacao ? '<div class="hist-item-obs">&#x1F4DD; ' + escHtml(ft.observacao) + '</div>' : '';
+      return '<div class="hist-item" data-id="' + ft.id + '">' +
+        '<div class="hist-item-top"><span class="hist-date">&#x1F4C5; ' + fmtDataHora(ft.dataHora || ft.criadoEm) + '</span><span class="hist-valor">' + fmtMoeda(ft.valor) + '</span></div>' +
+        '<div class="hist-item-mid"><span class="posto-nome">&#x1F4CD; ' + escHtml(ft.posto || '—') + '</span><span class="sep-dot">&middot;</span>' + escHtml(ft.motivo || '—') + '<span class="sep-dot">&middot;</span>' + escHtml(ft.horario || '—') + '</div>' +
+        '<div class="hist-item-people">&#x1F464; ' + escHtml(ft.substituto || '—') + '</div>' +
+        quemFaltouHtml + obsHtml +
+        '<div class="hist-item-actions">' +
+          '<button class="btn-edit-item" data-id="' + ft.id + '" title="Editar">&#x270F;&#xFE0F;</button>' +
+          '<button class="btn-remove" data-id="' + ft.id + '" title="Excluir">&#x2715;</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function refresh() { popularFiltros(); renderLista(); }
+
+  // ── Exclusão ──
+  function excluirRegistro(id) {
+    var lista = getRegistros();
+    var item = lista.find(function (ft) { return ft.id === id; });
+    if (!item) return;
+    if (!confirm('Excluir esta FT (' + (item.posto || '—') + ' · ' + fmtDataHora(item.dataHora || item.criadoEm) + ')?')) return;
+    lista = lista.filter(function (ft) { return ft.id !== id; });
+    salvarRegistros(lista);
+    refresh();
+    showToast('🗑️ FT excluída.', 'success');
+  }
+
+  function salvarRegistros(lista) {
+    try { localStorage.setItem('ft_registros', JSON.stringify(lista)); } catch (e) {}
+    if (window.FT_Store) FT_Store.set('ft_registros', lista);
+    if (window.FT_SyncQueue) {
+      FT_SyncQueue.enqueue('set', 'ft_registros', lista).then(function () {
+        if (window.SyncEngine) SyncEngine.flush();
+      });
+    }
+  }
+
+  // ── Edição ──
+  var MOTIVOS_COM_FALTOU = ['Atestado', 'Suspensão', 'Folga do Vigia', 'Cobertura de Férias', 'Afastamento', 'Remanejamento Interno'];
+  var editandoId = null;
+
+  function abrirEdicao(id) {
+    var item = getRegistros().find(function (ft) { return ft.id === id; });
+    if (!item) return;
+    editandoId = id;
+
+    var postos = window.CadastrosModule ? CadastrosModule.getPostos() : [];
+    var colaboradores = window.CadastrosModule ? CadastrosModule.getColaboradores() : [];
+
+    fillSelect('edPosto', postos, false);
+    ensureOptionValue('edPosto', item.posto);
+    document.getElementById('edPosto').value = item.posto || '';
+
+    fillSelect('edSubstituto', colaboradores, false);
+    ensureOptionValue('edSubstituto', item.substituto);
+    document.getElementById('edSubstituto').value = item.substituto || '';
+
+    fillSelect('edQuemFaltou', colaboradores, false);
+    document.getElementById('edQuemFaltou').insertAdjacentHTML('afterbegin', '<option value="">-- Nenhum --</option>');
+    ensureOptionValue('edQuemFaltou', item.quemFaltou);
+    document.getElementById('edQuemFaltou').value = item.quemFaltou || '';
+
+    var motivoSel = document.getElementById('edMotivo');
+    var motivoConhecido = Array.prototype.some.call(motivoSel.options, function (o) { return o.value === item.motivo; });
+    if (motivoConhecido) {
+      motivoSel.value = item.motivo || '';
+      document.getElementById('ed-motivo-outro-wrap').classList.remove('visible');
+    } else {
+      motivoSel.value = '__outro__';
+      document.getElementById('edMotivoOutro').value = item.motivo || '';
+      document.getElementById('ed-motivo-outro-wrap').classList.add('visible');
+    }
+
+    document.getElementById('edHorario').value = item.horario || '';
+    document.getElementById('edValor').value = item.valor || '';
+    document.getElementById('edObservacao').value = item.observacao || '';
+    document.getElementById('edDataHora').value = (item.dataHora || '').slice(0, 16);
+
+    document.getElementById('modalEditarFT').classList.add('show');
+  }
+
+  function ensureOptionValue(selectId, valor) {
+    if (!valor) return;
+    var sel = document.getElementById(selectId);
+    var exists = Array.prototype.some.call(sel.options, function (o) { return o.value === valor; });
+    if (!exists) {
+      var opt = document.createElement('option');
+      opt.value = valor; opt.textContent = valor;
+      sel.appendChild(opt);
+    }
+  }
+
+  function fecharEdicao() {
+    document.getElementById('modalEditarFT').classList.remove('show');
+    editandoId = null;
+  }
+
+  function salvarEdicao(e) {
+    e.preventDefault();
+    if (!editandoId) return;
+
+    var motivoSel = document.getElementById('edMotivo').value;
+    var motivo = (motivoSel === '__outro__') ? document.getElementById('edMotivoOutro').value.trim() : motivoSel;
+    var posto = document.getElementById('edPosto').value;
+    var horario = document.getElementById('edHorario').value.trim();
+    var substituto = document.getElementById('edSubstituto').value;
+    var quemFaltou = document.getElementById('edQuemFaltou').value;
+    var valor = document.getElementById('edValor').value;
+    var dataHora = document.getElementById('edDataHora').value;
+    var observacao = document.getElementById('edObservacao').value.trim();
+
+    if (!posto || !motivo || !horario || !substituto || !dataHora) {
+      showToast('⚠️ Preencha todos os campos obrigatórios.', 'error'); return;
+    }
+    if (MOTIVOS_COM_FALTOU.indexOf(motivo) !== -1 && motivo !== 'Cobertura de Férias' && !quemFaltou) {
+      showToast('⚠️ Informe quem faltou.', 'error'); return;
+    }
+
+    var lista = getRegistros();
+    var idx = lista.findIndex(function (ft) { return ft.id === editandoId; });
+    if (idx === -1) { fecharEdicao(); return; }
+
+    lista[idx] = Object.assign({}, lista[idx], {
+      posto: posto, motivo: motivo, horario: horario, substituto: substituto,
+      quemFaltou: quemFaltou || null, valor: parseFloat(valor) || 0,
+      dataHora: dataHora, observacao: observacao || null
+    });
+
+    salvarRegistros(lista);
+    fecharEdicao();
+    refresh();
+    showToast('✅ FT atualizada.', 'success');
+  }
+
+  // ── Exportação ──
+  function nomeArquivo(ext) {
+    var d = new Date();
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    return 'historico-ft-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.' + ext;
+  }
+
+  function linhasParaExport(lista) {
+    return lista.map(function (ft) {
+      return {
+        'Data/Hora': fmtDataHora(ft.dataHora || ft.criadoEm),
+        'Posto': ft.posto || '',
+        'Motivo': ft.motivo || '',
+        'Horário': ft.horario || '',
+        'Substituto': ft.substituto || '',
+        'Quem Faltou': ft.quemFaltou || '',
+        'Valor': parseFloat(ft.valor) || 0,
+        'Observação': ft.observacao || ''
+      };
+    });
+  }
+
+  function exportCSV() {
+    var lista = getFiltrados();
+    if (!lista.length) { showToast('⚠️ Nenhum registro para exportar.', 'error'); return; }
+    var linhas = linhasParaExport(lista);
+    var headers = Object.keys(linhas[0]);
+    function csvEsc(v) {
+      var s = String(v).replace(/"/g, '""');
+      return '"' + s + '"';
+    }
+    var csv = headers.map(csvEsc).join(';') + '\r\n' +
+      linhas.map(function (l) {
+        return headers.map(function (h) {
+          var v = l[h];
+          if (h === 'Valor') v = (v || 0).toFixed(2).replace('.', ',');
+          return csvEsc(v);
+        }).join(';');
+      }).join('\r\n');
+    var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    baixarBlob(blob, nomeArquivo('csv'));
+    showToast('✅ CSV exportado.', 'success');
+  }
+
+  function exportExcel() {
+    var lista = getFiltrados();
+    if (!lista.length) { showToast('⚠️ Nenhum registro para exportar.', 'error'); return; }
+    var btn = document.getElementById('btnExportExcel');
+    btn.disabled = true;
+    FT_ensureLib(
+      function () { return typeof window.XLSX !== 'undefined'; },
+      FT_LIB_SOURCES.xlsx,
+      function () {
+        try {
+          var linhas = linhasParaExport(lista);
+          var ws = XLSX.utils.json_to_sheet(linhas);
+          var wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, 'Histórico FT');
+          XLSX.writeFile(wb, nomeArquivo('xlsx'));
+          showToast('✅ Excel exportado.', 'success');
+        } catch (e) { console.error(e); showToast('❌ Erro ao gerar Excel.', 'error'); }
+        btn.disabled = false;
+      },
+      function () {
+        showToast('⚠️ Biblioteca de Excel indisponível offline. Use o CSV.', 'error');
+        btn.disabled = false;
+      }
+    );
+  }
+
+  function exportPDF() {
+    var lista = getFiltrados();
+    if (!lista.length) { showToast('⚠️ Nenhum registro para exportar.', 'error'); return; }
+    var btn = document.getElementById('btnExportPDF');
+    btn.disabled = true;
+    FT_ensureLib(
+      function () { return typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined'; },
+      FT_LIB_SOURCES.jspdf,
+      function () {
+        try {
+          var doc = new window.jspdf.jsPDF();
+          var y = 16;
+          doc.setFontSize(14);
+          doc.text('Histórico de FT — PJ Tecnologia', 14, y);
+          y += 6;
+          doc.setFontSize(9);
+          doc.text('Gerado em ' + new Date().toLocaleString('pt-BR'), 14, y);
+          y += 10;
+
+          lista.forEach(function (ft) {
+            if (y > 275) { doc.addPage(); y = 16; }
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'bold');
+            doc.text(fmtDataHora(ft.dataHora || ft.criadoEm) + '  —  ' + (ft.posto || '—') + '  —  ' + fmtMoeda(ft.valor), 14, y);
+            y += 5;
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(9);
+            var linha2 = 'Motivo: ' + (ft.motivo || '—') + '   Horário: ' + (ft.horario || '—');
+            doc.text(linha2, 14, y); y += 4.5;
+            var linha3 = 'Substituto: ' + (ft.substituto || '—') + (ft.quemFaltou ? '   Faltou: ' + ft.quemFaltou : '');
+            doc.text(linha3, 14, y); y += 4.5;
+            if (ft.observacao) {
+              var obsLines = doc.splitTextToSize('Obs: ' + ft.observacao, 180);
+              obsLines.forEach(function (l) { if (y > 280) { doc.addPage(); y = 16; } doc.text(l, 14, y); y += 4.5; });
+            }
+            y += 3;
+            doc.setDrawColor(220); doc.line(14, y - 2, 196, y - 2);
+          });
+
+          doc.save(nomeArquivo('pdf'));
+          showToast('✅ PDF exportado.', 'success');
+        } catch (e) { console.error(e); showToast('❌ Erro ao gerar PDF.', 'error'); }
+        btn.disabled = false;
+      },
+      function () {
+        showToast('⚠️ Biblioteca de PDF indisponível offline. Use o CSV.', 'error');
+        btn.disabled = false;
+      }
+    );
+  }
+
+  function baixarBlob(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  // ── Eventos ──
+  ['histDataDe', 'histDataAte', 'histPosto', 'histMotivo', 'histColab'].forEach(function (id) {
+    document.getElementById(id).addEventListener('change', renderLista);
+  });
+  document.getElementById('histBusca').addEventListener('input', renderLista);
+
+  document.getElementById('histLista').addEventListener('click', function (e) {
+    var editBtn = e.target.closest('.btn-edit-item');
+    var delBtn = e.target.closest('.btn-remove');
+    if (editBtn) abrirEdicao(editBtn.dataset.id);
+    if (delBtn) excluirRegistro(delBtn.dataset.id);
+  });
+
+  document.getElementById('edMotivo').addEventListener('change', function () {
+    document.getElementById('ed-motivo-outro-wrap').classList.toggle('visible', this.value === '__outro__');
+  });
+  document.getElementById('editForm').addEventListener('submit', salvarEdicao);
+  document.getElementById('btnEditCancelar').addEventListener('click', fecharEdicao);
+
+  document.getElementById('btnExportCSV').addEventListener('click', exportCSV);
+  document.getElementById('btnExportExcel').addEventListener('click', exportExcel);
+  document.getElementById('btnExportPDF').addEventListener('click', exportPDF);
+
+  // Encadeia com o hook de troca de aba
+  var prevTabShow = window.FT_onTabShow;
+  window.FT_onTabShow = function (tab) {
+    if (typeof prevTabShow === 'function') prevTabShow(tab);
+    if (tab === 'tab-historico') refresh();
+  };
+
+  // Encadeia com atualizações remotas (Firebase)
+  var prevRemoteUpdate2 = window.FT_onRemoteUpdate;
+  window.FT_onRemoteUpdate = function (key, value) {
+    if (typeof prevRemoteUpdate2 === 'function') prevRemoteUpdate2(key, value);
+    if (key === 'ft_registros' && !document.getElementById('tab-historico').classList.contains('hidden')) refresh();
+  };
+
+  return { refresh: refresh };
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO 9 — BICO FIXO (colaboradores fixos em postos, recorrentes)
+   ════════════════════════════════════════════════════════════ */
+var BicoFixoModule = (function () {
+  'use strict';
+
+  var LS_BICO = 'ft_bico_fixo';
+  var SEMANAS_POR_MES = 4.345;
+  var editandoId = null;
+  var diasSelecionados = [];
+
+  function loadStorage() {
+    try { return JSON.parse(localStorage.getItem(LS_BICO) || '[]'); } catch (e) { return []; }
+  }
+  function saveStorage(data) {
+    try { localStorage.setItem(LS_BICO, JSON.stringify(data)); } catch (e) {}
+    if (window.FT_Store) FT_Store.set(LS_BICO, data);
+    if (window.FT_SyncQueue) {
+      FT_SyncQueue.enqueue('set', LS_BICO, data).then(function () {
+        if (window.SyncEngine) SyncEngine.flush();
+      });
+    }
+  }
+
+  var bicos = loadStorage();
+
+  function fmtMoeda(v) { return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+  function estimativaMensal(valor, numDias) { return (parseFloat(valor) || 0) * (numDias || 0) * SEMANAS_POR_MES; }
+
+  function popularSelects() {
+    var postos = window.CadastrosModule ? CadastrosModule.getPostos() : [];
+    var colaboradores = window.CadastrosModule ? CadastrosModule.getColaboradores() : [];
+
+    fillSelect('bicoColaborador', colaboradores, true);
+    fillSelect('bicoPosto', postos, true);
+
+    var selFiltro = document.getElementById('bicoFiltroPosto');
+    var prev = selFiltro.value;
+    selFiltro.innerHTML = '<option value="">Todos os postos</option>' +
+      sortAlpha(postos).map(function (p) { return '<option value="' + escHtml(p.nome) + '">' + escHtml(p.nome) + '</option>'; }).join('');
+    selFiltro.value = prev;
+  }
+
+  function toggleDia(dia) {
+    var idx = diasSelecionados.indexOf(dia);
+    if (idx === -1) diasSelecionados.push(dia); else diasSelecionados.splice(idx, 1);
+    renderDiaChips();
+    atualizarEstimativa();
+  }
+
+  function renderDiaChips() {
+    document.querySelectorAll('#bicoDias .day-chip').forEach(function (chip) {
+      chip.classList.toggle('active', diasSelecionados.indexOf(chip.dataset.dia) !== -1);
+    });
+  }
+
+  function atualizarEstimativa() {
+    var valor = document.getElementById('bicoValor').value;
+    var est = estimativaMensal(valor, diasSelecionados.length);
+    document.getElementById('bicoEstimativa').innerHTML = 'Estimativa mensal: <strong>' + fmtMoeda(est) + '</strong>';
+  }
+
+  var DIA_LABEL = { DOM: 'Dom', SEG: 'Seg', TER: 'Ter', QUA: 'Qua', QUI: 'Qui', SEX: 'Sex', SAB: 'Sáb' };
+  var DIA_ORDEM = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+
+  function renderSummary() {
+    var ativos = bicos.filter(function (b) { return b.ativo; });
+    var totalMensal = ativos.reduce(function (acc, b) { return acc + estimativaMensal(b.valor, (b.dias || []).length); }, 0);
+    document.getElementById('bicoTotalAtivos').textContent = ativos.length;
+    document.getElementById('bicoValorMensal').textContent = fmtMoeda(totalMensal);
+  }
+
+  function getFiltrados() {
+    var status = document.getElementById('bicoFiltroStatus').value;
+    var posto = document.getElementById('bicoFiltroPosto').value;
+    return bicos.filter(function (b) {
+      if (status === 'ativo' && !b.ativo) return false;
+      if (status === 'inativo' && b.ativo) return false;
+      if (posto && b.posto !== posto) return false;
+      return true;
+    }).sort(function (a, b) {
+      if (a.ativo !== b.ativo) return a.ativo ? -1 : 1;
+      return (a.colaborador || '').localeCompare(b.colaborador || '', 'pt-BR', { sensitivity: 'base' });
+    });
+  }
+
+  function renderLista() {
+    var lista = getFiltrados();
+    var el = document.getElementById('bicoLista');
+    if (!lista.length) { el.innerHTML = '<p class="empty-state">Nenhum bico fixo cadastrado.</p>'; return; }
+
+    el.innerHTML = lista.map(function (b) {
+      var diasOrdenados = DIA_ORDEM.filter(function (d) { return (b.dias || []).indexOf(d) !== -1; });
+      var diasHtml = diasOrdenados.length
+        ? '<div class="bico-item-dias">' + diasOrdenados.map(function (d) { return '<span>' + DIA_LABEL[d] + '</span>'; }).join('') + '</div>'
+        : '';
+      var obsHtml = b.observacao ? '<div class="bico-item-obs">&#x1F4DD; ' + escHtml(b.observacao) + '</div>' : '';
+      var est = estimativaMensal(b.valor, (b.dias || []).length);
+      return '<div class="bico-item ' + (b.ativo ? '' : 'inativo') + '" data-id="' + b.id + '">' +
+        '<div class="bico-item-top">' +
+          '<span class="bico-item-title">&#x1F464; ' + escHtml(b.colaborador || '—') + '<span class="posto-sep">&middot;</span>&#x1F4CD; ' + escHtml(b.posto || '—') + '</span>' +
+          '<span class="bico-status-badge ' + (b.ativo ? 'ativo' : 'inativo') + '">' + (b.ativo ? 'Ativo' : 'Inativo') + '</span>' +
+        '</div>' +
+        '<div class="bico-item-info">&#x1F550; ' + escHtml(b.horario || '—') + '</div>' +
+        '<div class="bico-item-info">&#x1F4B0; ' + fmtMoeda(b.valor) + ' / diária &nbsp;&middot;&nbsp; <strong>' + fmtMoeda(est) + '</strong> estimado/mês</div>' +
+        diasHtml + obsHtml +
+        '<div class="bico-item-actions">' +
+          '<button class="btn-edit-item" data-id="' + b.id + '" title="Editar">&#x270F;&#xFE0F;</button>' +
+          '<button class="btn-remove" data-id="' + b.id + '" title="Excluir">&#x2715;</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function refresh() { popularSelects(); renderSummary(); renderLista(); }
+
+  function limparForm() {
+    document.getElementById('bicoForm').reset();
+    document.getElementById('bicoAtivo').checked = true;
+    diasSelecionados = [];
+    renderDiaChips();
+    atualizarEstimativa();
+    editandoId = null;
+    document.getElementById('bicoFormTitulo').innerHTML = '&#x1F4A0; Novo Bico Fixo';
+    document.getElementById('bicoSubmitBtn').innerHTML = '&#x2795; Adicionar Bico Fixo';
+    document.getElementById('bicoCancelarEdicao').classList.add('hidden');
+  }
+
+  function editarBico(id) {
+    var b = bicos.find(function (x) { return x.id === id; });
+    if (!b) return;
+    editandoId = id;
+
+    popularSelects();
+    document.getElementById('bicoColaborador').value = b.colaborador || '';
+    document.getElementById('bicoPosto').value = b.posto || '';
+    document.getElementById('bicoHorario').value = b.horario || '';
+    ensureHorarioInSelectBico(b.horario || '');
+    document.getElementById('bicoValor').value = b.valor || '';
+    document.getElementById('bicoObservacao').value = b.observacao || '';
+    document.getElementById('bicoAtivo').checked = !!b.ativo;
+    diasSelecionados = (b.dias || []).slice();
+    renderDiaChips();
+    atualizarEstimativa();
+
+    document.getElementById('bicoFormTitulo').innerHTML = '&#x270F;&#xFE0F; Editar Bico Fixo';
+    document.getElementById('bicoSubmitBtn').innerHTML = '&#x1F4BE; Salvar Alterações';
+    document.getElementById('bicoCancelarEdicao').classList.remove('hidden');
+    document.getElementById('bicoForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Horários customizados (Bico Fixo) ──
+  function loadHorariosCustomBico() { try { return JSON.parse(localStorage.getItem('bico_horarios_custom') || '[]'); } catch (e) { return []; } }
+  function saveHorariosCustomBico(list) { try { localStorage.setItem('bico_horarios_custom', JSON.stringify(list)); } catch (e) {} }
+
+  function renderHorarioChipsBico() {
+    var wrap = document.getElementById('horario-saved-bico');
+    var custom = loadHorariosCustomBico();
+    wrap.innerHTML = custom.map(function (h) {
+      return '<span class="horario-chip" data-h="' + escHtml(h) + '">' + escHtml(h) + '</span>';
+    }).join('');
+  }
+
+  function ensureHorarioInSelectBico(valor) {
+    var sel = document.getElementById('bicoHorario');
+    if (!valor) return;
+    var exists = Array.prototype.some.call(sel.options, function (o) { return o.value === valor; });
+    if (!exists) {
+      var opt = document.createElement('option');
+      opt.value = valor; opt.textContent = valor;
+      sel.appendChild(opt);
+    }
+    sel.value = valor;
+  }
+
+  function setupHorarioToggleBico() {
+    var btnToggle = document.getElementById('btn-toggle-horario-bico');
+    var wrap = document.getElementById('horario-custom-bico');
+    var input = document.getElementById('horario-custom-input-bico');
+    var btnSave = document.getElementById('btn-horario-save-bico');
+
+    btnToggle.addEventListener('click', function () { wrap.classList.toggle('visible'); if (wrap.classList.contains('visible')) input.focus(); });
+    btnSave.addEventListener('click', function () {
+      var v = input.value.trim();
+      if (!v) return;
+      var list = loadHorariosCustomBico();
+      if (list.indexOf(v) === -1) { list.push(v); saveHorariosCustomBico(list); renderHorarioChipsBico(); }
+      ensureHorarioInSelectBico(v);
+      input.value = '';
+      wrap.classList.remove('visible');
+      showToast('✅ Horário adicionado.', 'success');
+    });
+    document.getElementById('horario-saved-bico').addEventListener('click', function (e) {
+      if (e.target.classList.contains('horario-chip')) {
+        ensureHorarioInSelectBico(e.target.dataset.h);
+        wrap.classList.remove('visible');
+      }
+    });
+    renderHorarioChipsBico();
+  }
+
+  function excluirBico(id) {
+    var b = bicos.find(function (x) { return x.id === id; });
+    if (!b) return;
+    if (!confirm('Excluir o bico fixo de "' + b.colaborador + '" no posto "' + b.posto + '"?')) return;
+    bicos = bicos.filter(function (x) { return x.id !== id; });
+    saveStorage(bicos);
+    renderSummary(); renderLista();
+    if (editandoId === id) limparForm();
+    showToast('🗑️ Bico fixo excluído.', 'success');
+  }
+
+  function submitForm(e) {
+    e.preventDefault();
+    var colaborador = document.getElementById('bicoColaborador').value;
+    var posto = document.getElementById('bicoPosto').value;
+    var horario = document.getElementById('bicoHorario').value.trim();
+    var valor = document.getElementById('bicoValor').value;
+    var observacao = document.getElementById('bicoObservacao').value.trim();
+    var ativo = document.getElementById('bicoAtivo').checked;
+
+    if (!colaborador || !posto || !horario) {
+      showToast('⚠️ Preencha colaborador, posto e horário.', 'error'); return;
+    }
+    if (!diasSelecionados.length) {
+      showToast('⚠️ Selecione ao menos um dia da semana.', 'error'); return;
+    }
+
+    if (editandoId) {
+      var idx = bicos.findIndex(function (b) { return b.id === editandoId; });
+      if (idx !== -1) {
+        bicos[idx] = Object.assign({}, bicos[idx], {
+          colaborador: colaborador, posto: posto, horario: horario,
+          valor: parseFloat(valor) || 0, dias: diasSelecionados.slice(),
+          observacao: observacao || null, ativo: ativo
+        });
+      }
+      showToast('✅ Bico fixo atualizado.', 'success');
+    } else {
+      bicos.push({
+        id: gerarId(), colaborador: colaborador, posto: posto, horario: horario,
+        valor: parseFloat(valor) || 0, dias: diasSelecionados.slice(),
+        observacao: observacao || null, ativo: ativo, criadoEm: new Date().toISOString()
+      });
+      showToast('✅ Bico fixo adicionado.', 'success');
+    }
+
+    saveStorage(bicos);
+    limparForm();
+    renderSummary();
+    renderLista();
+  }
+
+  document.getElementById('bicoDias').addEventListener('click', function (e) {
+    var chip = e.target.closest('.day-chip');
+    if (chip) toggleDia(chip.dataset.dia);
+  });
+  document.getElementById('bicoValor').addEventListener('input', atualizarEstimativa);
+  document.getElementById('bicoForm').addEventListener('submit', submitForm);
+  setupHorarioToggleBico();
+  document.getElementById('bicoCancelarEdicao').addEventListener('click', limparForm);
+  document.getElementById('bicoFiltroStatus').addEventListener('change', renderLista);
+  document.getElementById('bicoFiltroPosto').addEventListener('change', renderLista);
+
+  document.getElementById('bicoLista').addEventListener('click', function (e) {
+    var editBtn = e.target.closest('.btn-edit-item');
+    var delBtn = e.target.closest('.btn-remove');
+    if (editBtn) editarBico(editBtn.dataset.id);
+    if (delBtn) excluirBico(delBtn.dataset.id);
+  });
+
+  // Encadeia com o hook de troca de aba
+  var prevTabShow = window.FT_onTabShow;
+  window.FT_onTabShow = function (tab) {
+    if (typeof prevTabShow === 'function') prevTabShow(tab);
+    if (tab === 'tab-bico') refresh();
+  };
+
+  // Encadeia com atualizações remotas (Firebase)
+  var prevRemoteUpdate3 = window.FT_onRemoteUpdate;
+  window.FT_onRemoteUpdate = function (key, value) {
+    if (typeof prevRemoteUpdate3 === 'function') prevRemoteUpdate3(key, value);
+    if (key === LS_BICO && !document.getElementById('tab-bico').classList.contains('hidden')) {
+      bicos = value || []; renderSummary(); renderLista();
+    }
+  };
+
+  atualizarEstimativa();
+
+  return { refresh: refresh };
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO 10 — PAGAMENTOS (fechamento por colaborador + recibo PDF)
+   ════════════════════════════════════════════════════════════ */
+var PagamentosModule = (function () {
+  'use strict';
+
+  function getRegistros() {
+    try { return JSON.parse(localStorage.getItem('ft_registros') || '[]'); } catch (e) { return []; }
+  }
+
+  function salvarRegistros(lista) {
+    try { localStorage.setItem('ft_registros', JSON.stringify(lista)); } catch (e) {}
+    if (window.FT_Store) FT_Store.set('ft_registros', lista);
+    if (window.FT_SyncQueue) {
+      FT_SyncQueue.enqueue('set', 'ft_registros', lista).then(function () {
+        if (window.SyncEngine) SyncEngine.flush();
+      });
+    }
+  }
+
+  function popularFiltroColaborador() {
+    var colaboradores = window.CadastrosModule ? CadastrosModule.getColaboradores() : [];
+    var sel = document.getElementById('pagColaborador');
+    var prev = sel.value;
+    sel.innerHTML = '<option value="">Todos os colaboradores</option>' +
+      sortAlpha(colaboradores).map(function (c) { return '<option value="' + escHtml(c.nome) + '">' + escHtml(c.nome) + '</option>'; }).join('');
+    sel.value = prev;
+  }
+
+  function defaultPeriodo() {
+    var deEl = document.getElementById('pagDataDe');
+    var ateEl = document.getElementById('pagDataAte');
+    if (deEl.value || ateEl.value) return;
+    var hoje = new Date();
+    var primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    deEl.value = primeiroDia.getFullYear() + '-' + pad(primeiroDia.getMonth() + 1) + '-01';
+    ateEl.value = hoje.getFullYear() + '-' + pad(hoje.getMonth() + 1) + '-' + pad(hoje.getDate());
+  }
+
+  function getFiltrados() {
+    var de = document.getElementById('pagDataDe').value;
+    var ate = document.getElementById('pagDataAte').value;
+    var colaborador = document.getElementById('pagColaborador').value;
+    var status = document.getElementById('pagStatus').value;
+
+    return getRegistros().filter(function (ft) {
+      var data = (ft.dataHora || ft.criadoEm || '').slice(0, 10);
+      if (de && data < de) return false;
+      if (ate && data > ate) return false;
+      if (colaborador && ft.substituto !== colaborador) return false;
+      if (status === 'pago' && !ft.pago) return false;
+      if (status === 'pendente' && ft.pago) return false;
+      return true;
+    }).sort(function (a, b) {
+      return (a.dataHora || a.criadoEm || '').localeCompare(b.dataHora || b.criadoEm || '');
+    });
+  }
+
+  function agruparPorColaborador(lista) {
+    var map = {};
+    lista.forEach(function (ft) {
+      var nome = ft.substituto || 'Sem colaborador';
+      if (!map[nome]) map[nome] = [];
+      map[nome].push(ft);
+    });
+    return Object.keys(map).sort(function (a, b) { return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }); })
+      .map(function (nome) { return { nome: nome, entradas: map[nome] }; });
+  }
+
+  function renderSummary(lista) {
+    var totalGeral = 0, totalPago = 0, totalPendente = 0;
+    lista.forEach(function (ft) {
+      var v = parseFloat(ft.valor) || 0;
+      totalGeral += v;
+      if (ft.pago) totalPago += v; else totalPendente += v;
+    });
+    document.getElementById('pagTotalGeral').textContent = fmtMoedaBR(totalGeral);
+    document.getElementById('pagTotalPago').textContent = fmtMoedaBR(totalPago);
+    document.getElementById('pagTotalPendente').textContent = fmtMoedaBR(totalPendente);
+  }
+
+  function renderGrupos() {
+    var lista = getFiltrados();
+    renderSummary(lista);
+
+    var el = document.getElementById('pagGrupos');
+    if (!lista.length) { el.innerHTML = '<p class="empty-state">Nenhum registro encontrado no período.</p>'; return; }
+
+    var grupos = agruparPorColaborador(lista);
+    el.innerHTML = grupos.map(function (g) {
+      var totalGrupo = g.entradas.reduce(function (acc, ft) { return acc + (parseFloat(ft.valor) || 0); }, 0);
+      var pagoGrupo = g.entradas.filter(function (ft) { return ft.pago; }).reduce(function (acc, ft) { return acc + (parseFloat(ft.valor) || 0); }, 0);
+      var pendenteGrupo = totalGrupo - pagoGrupo;
+      var temPendente = g.entradas.some(function (ft) { return !ft.pago; });
+
+      var linhas = g.entradas.map(function (ft) {
+        return '<div class="pag-entry-row" data-id="' + ft.id + '">' +
+          '<div class="pag-entry-info"><span class="pag-entry-date">' + fmtDataHoraBR(ft.dataHora || ft.criadoEm) + '</span> &middot; <span class="pag-entry-posto">' + escHtml(ft.posto || '—') + '</span> &middot; ' + escHtml(ft.motivo || '—') + '</div>' +
+          '<span class="pag-entry-valor">' + fmtMoedaBR(ft.valor) + '</span>' +
+          '<button class="pag-status-badge ' + (ft.pago ? 'pago' : 'pendente') + '" data-id="' + ft.id + '" title="Clique para alternar">' + (ft.pago ? '&#x2714; Pago' : '&#x23F3; Pendente') + '</button>' +
+        '</div>';
+      }).join('');
+
+      return '<div class="pag-group" data-colab="' + escHtml(g.nome) + '">' +
+        '<div class="pag-group-header"><h3>&#x1F464; ' + escHtml(g.nome) + '</h3><span class="pag-group-count">' + g.entradas.length + ' FT' + (g.entradas.length === 1 ? '' : 's') + '</span></div>' +
+        '<div class="pag-group-totals">' +
+          '<span>Total: <strong>' + fmtMoedaBR(totalGrupo) + '</strong></span>' +
+          '<span class="tot-pago">Pago: <strong>' + fmtMoedaBR(pagoGrupo) + '</strong></span>' +
+          '<span class="tot-pendente">Pendente: <strong>' + fmtMoedaBR(pendenteGrupo) + '</strong></span>' +
+        '</div>' +
+        '<div class="pag-entries">' + linhas + '</div>' +
+        '<div class="pag-group-actions">' +
+          '<button class="btn-pag-action btn-marcar-pagas" data-colab="' + escHtml(g.nome) + '"' + (temPendente ? '' : ' disabled') + '>&#x2714; Marcar pendentes como pagas</button>' +
+          '<button class="btn-pag-action btn-gerar-recibo" data-colab="' + escHtml(g.nome) + '">&#x1F4C4; Gerar Recibo</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function refresh() { popularFiltroColaborador(); defaultPeriodo(); renderGrupos(); }
+
+  function alternarStatus(id) {
+    var lista = getRegistros();
+    var idx = lista.findIndex(function (ft) { return ft.id === id; });
+    if (idx === -1) return;
+    lista[idx].pago = !lista[idx].pago;
+    lista[idx].pagoEm = lista[idx].pago ? new Date().toISOString() : null;
+    salvarRegistros(lista);
+    renderGrupos();
+  }
+
+  function marcarPendentesComoPagas(nomeColab) {
+    if (!confirm('Marcar todas as FTs pendentes de "' + nomeColab + '" (no período filtrado) como pagas?')) return;
+    var filtradosIds = getFiltrados().filter(function (ft) { return (ft.substituto || 'Sem colaborador') === nomeColab && !ft.pago; }).map(function (ft) { return ft.id; });
+    var lista = getRegistros();
+    var agora = new Date().toISOString();
+    lista.forEach(function (ft) {
+      if (filtradosIds.indexOf(ft.id) !== -1) { ft.pago = true; ft.pagoEm = agora; }
+    });
+    salvarRegistros(lista);
+    renderGrupos();
+    showToast('✅ FTs de ' + nomeColab + ' marcadas como pagas.', 'success');
+  }
+
+  function nomeArquivoRecibo(nomeColab) {
+    var d = new Date();
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    var slug = nomeColab.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
+    return 'recibo-' + slug + '-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '.pdf';
+  }
+
+  function gerarRecibo(nomeColab) {
+    var entradas = getFiltrados().filter(function (ft) { return (ft.substituto || 'Sem colaborador') === nomeColab; });
+    if (!entradas.length) { showToast('⚠️ Sem registros para gerar recibo.', 'error'); return; }
+
+    var btn = document.querySelector('.btn-gerar-recibo[data-colab="' + CSS.escape(nomeColab) + '"]');
+    if (btn) btn.disabled = true;
+
+    FT_ensureLib(
+      function () { return typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined'; },
+      FT_LIB_SOURCES.jspdf,
+      function () {
+        try {
+          var doc = new window.jspdf.jsPDF();
+          var total = entradas.reduce(function (acc, ft) { return acc + (parseFloat(ft.valor) || 0); }, 0);
+          var de = document.getElementById('pagDataDe').value;
+          var ate = document.getElementById('pagDataAte').value;
+          var y = 18;
+
+          doc.setFontSize(15);
+          doc.setFont(undefined, 'bold');
+          doc.text('Recibo de Pagamento — PJ Tecnologia', 14, y); y += 8;
+          doc.setFontSize(11);
+          doc.text('Colaborador: ' + nomeColab, 14, y); y += 6;
+          doc.setFont(undefined, 'normal');
+          doc.setFontSize(9);
+          doc.text('Período: ' + (de ? new Date(de + 'T12:00:00').toLocaleDateString('pt-BR') : '—') + ' a ' + (ate ? new Date(ate + 'T12:00:00').toLocaleDateString('pt-BR') : '—'), 14, y); y += 5;
+          doc.text('Gerado em ' + new Date().toLocaleString('pt-BR'), 14, y); y += 10;
+
+          doc.setFontSize(9); doc.setFont(undefined, 'bold');
+          doc.text('Data', 14, y); doc.text('Posto', 48, y); doc.text('Motivo', 108, y); doc.text('Status', 155, y); doc.text('Valor', 182, y);
+          y += 3; doc.setDrawColor(180); doc.line(14, y, 196, y); y += 5;
+          doc.setFont(undefined, 'normal');
+
+          entradas.forEach(function (ft) {
+            if (y > 275) { doc.addPage(); y = 18; }
+            doc.text(fmtDataHoraBR(ft.dataHora || ft.criadoEm).slice(0, 10), 14, y);
+            doc.text(String(ft.posto || '—').slice(0, 26), 48, y);
+            doc.text(String(ft.motivo || '—').slice(0, 20), 108, y);
+            doc.text(ft.pago ? 'Pago' : 'Pendente', 155, y);
+            doc.text(fmtMoedaBR(ft.valor), 182, y, { align: 'right' });
+            y += 5.5;
+          });
+
+          y += 3; doc.setDrawColor(180); doc.line(14, y, 196, y); y += 7;
+          doc.setFont(undefined, 'bold'); doc.setFontSize(11);
+          doc.text('Total: ' + fmtMoedaBR(total), 14, y); y += 20;
+
+          doc.setFont(undefined, 'normal'); doc.setFontSize(9);
+          if (y > 260) { doc.addPage(); y = 18; }
+          doc.line(14, y + 14, 100, y + 14);
+          doc.text('Assinatura do colaborador', 14, y + 19);
+
+          doc.save(nomeArquivoRecibo(nomeColab));
+          showToast('✅ Recibo gerado.', 'success');
+        } catch (e) { console.error(e); showToast('❌ Erro ao gerar recibo.', 'error'); }
+        if (btn) btn.disabled = false;
+      },
+      function () {
+        showToast('⚠️ Biblioteca de PDF indisponível offline. Tente novamente com internet.', 'error');
+        if (btn) btn.disabled = false;
+      }
+    );
+  }
+
+  document.getElementById('pagDataDe').addEventListener('change', renderGrupos);
+  document.getElementById('pagDataAte').addEventListener('change', renderGrupos);
+  document.getElementById('pagColaborador').addEventListener('change', renderGrupos);
+  document.getElementById('pagStatus').addEventListener('change', renderGrupos);
+
+  document.getElementById('pagGrupos').addEventListener('click', function (e) {
+    var badge = e.target.closest('.pag-status-badge');
+    var marcarBtn = e.target.closest('.btn-marcar-pagas');
+    var reciboBtn = e.target.closest('.btn-gerar-recibo');
+    if (badge) alternarStatus(badge.dataset.id);
+    if (marcarBtn) marcarPendentesComoPagas(marcarBtn.dataset.colab);
+    if (reciboBtn) gerarRecibo(reciboBtn.dataset.colab);
+  });
+
+  // Encadeia com o hook de troca de aba
+  var prevTabShow = window.FT_onTabShow;
+  window.FT_onTabShow = function (tab) {
+    if (typeof prevTabShow === 'function') prevTabShow(tab);
+    if (tab === 'tab-pagamentos') refresh();
+  };
+
+  // Encadeia com atualizações remotas (Firebase)
+  var prevRemoteUpdate4 = window.FT_onRemoteUpdate;
+  window.FT_onRemoteUpdate = function (key, value) {
+    if (typeof prevRemoteUpdate4 === 'function') prevRemoteUpdate4(key, value);
+    if (key === 'ft_registros' && !document.getElementById('tab-pagamentos').classList.contains('hidden')) renderGrupos();
+  };
+
+  return { refresh: refresh };
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO 11 — GERAL (consolidado por posto: FTs, Bico Fixo e Pagamentos)
+   ════════════════════════════════════════════════════════════ */
+var GeralModule = (function () {
+  'use strict';
+
+  var SEMANAS_POR_MES = 4.345;
+
+  function getRegistros() {
+    try { return JSON.parse(localStorage.getItem('ft_registros') || '[]'); } catch (e) { return []; }
+  }
+  function getBicos() {
+    try { return JSON.parse(localStorage.getItem('ft_bico_fixo') || '[]'); } catch (e) { return []; }
+  }
+
+  function dataDoRegistro(ft) { return (ft.dataHora || ft.criadoEm || '').slice(0, 10); }
+
+  function filtrarPorPeriodo(lista, periodo) {
+    if (periodo === 'todos') return lista;
+    var hoje = new Date();
+    var limite;
+    if (periodo === 'mes') { limite = new Date(hoje.getFullYear(), hoje.getMonth(), 1); }
+    else if (periodo === '7d') { limite = new Date(hoje); limite.setDate(limite.getDate() - 7); }
+    else if (periodo === '30d') { limite = new Date(hoje); limite.setDate(limite.getDate() - 30); }
+    else { return lista; }
+    var limiteStr = limite.toISOString().slice(0, 10);
+    return lista.filter(function (ft) { return dataDoRegistro(ft) >= limiteStr; });
+  }
+
+  function estimativaMensalBico(b) {
+    return (parseFloat(b.valor) || 0) * ((b.dias || []).length) * SEMANAS_POR_MES;
+  }
+
+  function montarConsolidado() {
+    var periodo = document.getElementById('geralPeriodo').value;
+    var fts = filtrarPorPeriodo(getRegistros(), periodo);
+    var bicos = getBicos();
+    var mapa = {};
+
+    function getEntry(nomePosto) {
+      var chave = (nomePosto || '—').trim() || '—';
+      if (!mapa[chave]) mapa[chave] = { nome: chave, ftCount: 0, ftValor: 0, pago: 0, pendente: 0, bicoCount: 0, bicoValor: 0 };
+      return mapa[chave];
+    }
+
+    fts.forEach(function (ft) {
+      var e = getEntry(ft.posto);
+      e.ftCount += 1;
+      var v = parseFloat(ft.valor) || 0;
+      e.ftValor += v;
+      if (ft.pago) e.pago += v; else e.pendente += v;
+    });
+
+    bicos.forEach(function (b) {
+      if (!b.ativo) return;
+      var e = getEntry(b.posto);
+      e.bicoCount += 1;
+      e.bicoValor += estimativaMensalBico(b);
+    });
+
+    return Object.keys(mapa).map(function (k) { return mapa[k]; })
+      .sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }); });
+  }
+
+  function renderStats(lista) {
+    var valorFT = lista.reduce(function (acc, p) { return acc + p.ftValor; }, 0);
+    var valorBico = lista.reduce(function (acc, p) { return acc + p.bicoValor; }, 0);
+    var pendente = lista.reduce(function (acc, p) { return acc + p.pendente; }, 0);
+    document.getElementById('geralTotalPostos').textContent = lista.length;
+    document.getElementById('geralValorFT').textContent = fmtMoedaBR(valorFT);
+    document.getElementById('geralValorBico').textContent = fmtMoedaBR(valorBico);
+    document.getElementById('geralValorPendente').textContent = fmtMoedaBR(pendente);
+  }
+
+  function renderLista(lista) {
+    var busca = (document.getElementById('geralBusca').value || '').trim().toLowerCase();
+    var filtrada = busca ? lista.filter(function (p) { return p.nome.toLowerCase().indexOf(busca) !== -1; }) : lista;
+    var el = document.getElementById('geralPorPosto');
+    if (!filtrada.length) { el.innerHTML = '<p class="empty-state">Nenhum posto com movimento no período.</p>'; return; }
+    el.innerHTML = filtrada.map(function (p) {
+      return '<div class="geral-posto-card">' +
+        '<div class="geral-posto-header"><h3>&#x1F4CD; ' + escHtml(p.nome) + '</h3></div>' +
+        '<div class="geral-posto-metrics">' +
+          '<div class="geral-metric"><span class="geral-metric-value col-amber">' + p.ftCount + '</span><span class="geral-metric-label">FT' + (p.ftCount === 1 ? '' : 's') + '</span></div>' +
+          '<div class="geral-metric"><span class="geral-metric-value col-green">' + fmtMoedaBR(p.ftValor) + '</span><span class="geral-metric-label">Valor FTs</span></div>' +
+          '<div class="geral-metric"><span class="geral-metric-value col-purple">' + p.bicoCount + '</span><span class="geral-metric-label">Bicos ativos</span></div>' +
+          '<div class="geral-metric"><span class="geral-metric-value col-purple">' + fmtMoedaBR(p.bicoValor) + '</span><span class="geral-metric-label">Bico est./mês</span></div>' +
+          '<div class="geral-metric"><span class="geral-metric-value col-green">' + fmtMoedaBR(p.pago) + '</span><span class="geral-metric-label">Pago</span></div>' +
+          '<div class="geral-metric"><span class="geral-metric-value col-orange">' + fmtMoedaBR(p.pendente) + '</span><span class="geral-metric-label">Pendente</span></div>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function refresh() {
+    var lista = montarConsolidado();
+    renderStats(lista);
+    renderLista(lista);
+  }
+
+  document.getElementById('geralPeriodo').addEventListener('change', refresh);
+  document.getElementById('geralBusca').addEventListener('input', refresh);
+
+  // Encadeia com o hook de troca de aba
+  var prevTabShow = window.FT_onTabShow;
+  window.FT_onTabShow = function (tab) {
+    if (typeof prevTabShow === 'function') prevTabShow(tab);
+    if (tab === 'tab-geral') refresh();
+  };
+
+  // Encadeia com atualizações remotas (Firebase)
+  var prevRemoteUpdate5 = window.FT_onRemoteUpdate;
+  window.FT_onRemoteUpdate = function (key, value) {
+    if (typeof prevRemoteUpdate5 === 'function') prevRemoteUpdate5(key, value);
+    if ((key === 'ft_registros' || key === 'ft_bico_fixo') && !document.getElementById('tab-geral').classList.contains('hidden')) refresh();
+  };
+
+  return { refresh: refresh };
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO 12 — ALERTAS DE FT (detecção automática de pendências)
+   Monitora postos configurados e, com base na escala real de cada
+   um (horário de entrada/rendição por dia da semana, turno Dia
+   e/ou Noite, e regra Par/Ímpar/Todo), verifica se já existe FT
+   lançada para o período. Se não houver, dispara um alerta
+   flutuante agrupado por período (Dia/Noite) com os postos
+   pendentes, permitindo "Lembrar em 1h" ou marcar "Ciente".
+   ════════════════════════════════════════════════════════════ */
+var AlertasModule = (function () {
+  'use strict';
+
+  var LS_CONFIG  = 'ft_alertas_config';
+  var LS_POSTOS  = 'ft_alertas_postos_v2';
+  var LS_CIENTE  = 'ft_alertas_ciente';
+
+  var DIA_ORDEM  = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+  var DIA_LABEL  = { DOM: 'Dom', SEG: 'Seg', TER: 'Ter', QUA: 'Qua', QUI: 'Qui', SEX: 'Sex', SAB: 'Sáb' };
+  var DEFAULT_ENTRADA_DIA   = '07:00';
+  var DEFAULT_ENTRADA_NOITE = '18:00';
+
+  // ── Persistência (localStorage + FT_Store + fila de sync Firebase) ──
+  function loadJSON(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (e) { return fallback; }
+  }
+  function persist(key, data) {
+    try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) {}
+    if (window.FT_Store) FT_Store.set(key, data);
+    if (window.FT_SyncQueue) {
+      FT_SyncQueue.enqueue('set', key, data).then(function () {
+        if (window.SyncEngine) SyncEngine.flush();
+      });
+    }
+  }
+
+  var config = loadJSON(LS_CONFIG, { diaAtivo: true, noiteAtivo: true });
+  var postosMonitorados = loadJSON(LS_POSTOS, []);
+  var ciente = loadJSON(LS_CIENTE, {}); // { "id_periodo_YYYY-MM-DD": { status:'ciente'|'snooze', ate: iso } }
+
+  function saveConfig() { persist(LS_CONFIG, config); }
+  function savePostos() { persist(LS_POSTOS, postosMonitorados); }
+  function saveCiente() { persist(LS_CIENTE, ciente); }
+
+  // ── Helpers de data/hora ──
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function fmtBR(ymdStr) { var p = ymdStr.split('-'); return p[2] + '/' + p[1]; }
+  function horaAtualStr() { var d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function diaSemanaKey(d) { return DIA_ORDEM[d.getDay()]; }
+  function addDias(d, n) { var r = new Date(d); r.setDate(r.getDate() + n); return r; }
+
+  function regraAplicaHoje(regra, data) {
+    if (!regra || regra === 'todos') return true;
+    var par = (data.getDate() % 2 === 0);
+    return regra === 'par' ? par : !par;
+  }
+
+  function novaEscalaVazia() {
+    var o = {};
+    DIA_ORDEM.forEach(function (d) { o[d] = ''; });
+    return o;
+  }
+
+  function garantirEstrutura(p) {
+    p.escalaDia = p.escalaDia || novaEscalaVazia();
+    p.escalaNoite = p.escalaNoite || novaEscalaVazia();
+    DIA_ORDEM.forEach(function (d) {
+      if (!p.escalaDia[d]) p.escalaDia[d] = '';
+      if (!p.escalaNoite[d]) p.escalaNoite[d] = '';
+    });
+    if (typeof p.ativoDia !== 'boolean') p.ativoDia = true;
+    if (typeof p.ativoNoite !== 'boolean') p.ativoNoite = true;
+    if (typeof p.ativo !== 'boolean') p.ativo = true;
+    if (!p.regra) p.regra = 'todos';
+    return p;
+  }
+  postosMonitorados.forEach(garantirEstrutura);
+
+  // ── Agrupa dias consecutivos com o mesmo horário (estilo "Seg–Qui 17h, Sex 16h") ──
+  function agruparEscala(escala) {
+    var grupos = [];
+    DIA_ORDEM.forEach(function (dia) {
+      var valor = escala[dia] || '—';
+      var ultimo = grupos[grupos.length - 1];
+      if (ultimo && ultimo.valor === valor) { ultimo.dias.push(dia); }
+      else { grupos.push({ valor: valor, dias: [dia] }); }
+    });
+    return grupos.map(function (g) {
+      var label = g.dias.length > 1 ? DIA_LABEL[g.dias[0]] + '–' + DIA_LABEL[g.dias[g.dias.length - 1]] : DIA_LABEL[g.dias[0]];
+      return label + ' ' + (g.valor === '—' ? '(não configurado)' : g.valor + 'h');
+    }).join(', ');
+  }
+
+  function renderInfoBox() {
+    var el = document.getElementById('alertasInfoLista');
+    var ativos = postosMonitorados.filter(function (p) { return p.ativo; });
+    if (!ativos.length) { el.innerHTML = '<span class="info-posto-linha">Nenhum posto monitorado ainda.</span>'; return; }
+    el.innerHTML = ativos.map(function (p) {
+      var partes = [];
+      if (p.ativoDia) partes.push('Dia: ' + agruparEscala(p.escalaDia));
+      if (p.ativoNoite) partes.push('Noite: ' + agruparEscala(p.escalaNoite));
+      var regraTxt = p.regra === 'par' ? ' · FT apenas em dias pares' : p.regra === 'impar' ? ' · FT apenas em dias ímpares' : '';
+      return '<div class="info-posto-linha">&#x1F4CD; <strong>' + escHtml(p.nome) + '</strong>: ' + (partes.join(' / ') || 'sem escala definida') + regraTxt + '</div>';
+    }).join('');
+  }
+
+  // ── Períodos globais (Dia/Noite) ──
+  function renderPeriodoToggle() {
+    var bDia = document.getElementById('btnPeriodoDia');
+    var bNoite = document.getElementById('btnPeriodoNoite');
+    bDia.classList.toggle('on', !!config.diaAtivo);
+    bDia.querySelector('.periodo-status').textContent = config.diaAtivo ? 'Ativo' : 'Inativo';
+    bNoite.classList.toggle('on', !!config.noiteAtivo);
+    bNoite.querySelector('.periodo-status').textContent = config.noiteAtivo ? 'Ativo' : 'Inativo';
+  }
+  document.getElementById('btnPeriodoDia').addEventListener('click', function () {
+    config.diaAtivo = !config.diaAtivo; saveConfig(); renderPeriodoToggle();
+  });
+  document.getElementById('btnPeriodoNoite').addEventListener('click', function () {
+    config.noiteAtivo = !config.noiteAtivo; saveConfig(); renderPeriodoToggle();
+  });
+
+  // ── Lista de postos monitorados ──
+  function renderPostosMonitorados() {
+    var el = document.getElementById('listaPostosMonitorados');
+    if (!postosMonitorados.length) { el.innerHTML = '<p class="empty-state">Nenhum posto monitorado ainda.</p>'; return; }
+    el.innerHTML = sortAlpha(postosMonitorados).map(function (p) {
+      return '<div class="posto-monitor-card ' + (p.ativo ? '' : 'inativo') + '" data-id="' + p.id + '">' +
+        '<div class="posto-monitor-head">' +
+          '<span class="posto-monitor-nome">' + escHtml(p.nome) + '</span>' +
+          '<div class="posto-monitor-actions">' +
+            '<button type="button" class="icon-toggle-btn ' + (p.ativoDia ? 'on-dia' : '') + '" data-acao="dia" title="Turno Dia">&#x2600;&#xFE0F;</button>' +
+            '<button type="button" class="icon-toggle-btn ' + (p.ativoNoite ? 'on-noite' : '') + '" data-acao="noite" title="Turno Noite">&#x1F319;</button>' +
+            '<button type="button" class="icon-toggle-btn ' + (p.ativo ? 'on-ativo' : '') + '" data-acao="ativo" title="Ativar/Desativar">&#x2705;</button>' +
+            '<button type="button" class="icon-toggle-btn btn-remove-posto" data-acao="remover" title="Remover">&#x2715;</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="regra-dias-row">' +
+          '<button type="button" data-regra="par" class="' + (p.regra === 'par' ? 'active' : '') + '">&#x25CF; Par</button>' +
+          '<button type="button" data-regra="impar" class="' + (p.regra === 'impar' ? 'active' : '') + '">&#x25CB; Ímpar</button>' +
+          '<button type="button" data-regra="todos" class="' + (p.regra === 'todos' ? 'active' : '') + '">&#x25CF; Todo</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function encontrarPosto(id) { return postosMonitorados.find(function (p) { return p.id === id; }); }
+
+  document.getElementById('listaPostosMonitorados').addEventListener('click', function (e) {
+    var card = e.target.closest('.posto-monitor-card');
+    if (!card) return;
+    var p = encontrarPosto(card.dataset.id);
+    if (!p) return;
+
+    var btnAcao = e.target.closest('[data-acao]');
+    if (btnAcao) {
+      var acao = btnAcao.dataset.acao;
+      if (acao === 'dia') p.ativoDia = !p.ativoDia;
+      else if (acao === 'noite') p.ativoNoite = !p.ativoNoite;
+      else if (acao === 'ativo') p.ativo = !p.ativo;
+      else if (acao === 'remover') {
+        if (!confirm('Remover o posto "' + p.nome + '" do monitoramento?')) return;
+        postosMonitorados = postosMonitorados.filter(function (x) { return x.id !== p.id; });
+      }
+      savePostos(); renderPostosMonitorados(); renderInfoBox(); popularSelectEscala();
+      return;
+    }
+    var btnRegra = e.target.closest('[data-regra]');
+    if (btnRegra) {
+      p.regra = btnRegra.dataset.regra;
+      savePostos(); renderPostosMonitorados(); renderInfoBox();
+    }
+  });
+
+  document.getElementById('btnAddPostoMonitorado').addEventListener('click', function () {
+    var input = document.getElementById('inputPostoMonitorado');
+    var nome = input.value.trim();
+    if (!nome) { showToast('⚠️ Informe o nome do posto.', 'error'); return; }
+    if (postosMonitorados.some(function (p) { return p.nome.toLowerCase() === nome.toLowerCase(); })) {
+      showToast('⚠️ Este posto já está monitorado.', 'error'); return;
+    }
+    postosMonitorados.push(garantirEstrutura({ id: gerarId(), nome: nome }));
+    savePostos();
+    input.value = '';
+    renderPostosMonitorados(); renderInfoBox(); popularSelectEscala();
+    showToast('✅ Posto adicionado ao monitoramento.', 'success');
+  });
+  document.getElementById('inputPostoMonitorado').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btnAddPostoMonitorado').click(); }
+  });
+
+  // ── Editor de escala (modal) ──
+  function popularSelectEscala() {
+    var sel = document.getElementById('escalaSelectPosto');
+    var prev = sel.value;
+    sel.innerHTML = '<option value="">— Selecione um posto —</option>' +
+      sortAlpha(postosMonitorados).map(function (p) { return '<option value="' + p.id + '">' + escHtml(p.nome) + '</option>'; }).join('');
+    sel.value = prev;
+  }
+
+  function renderCamposEscala(containerId, escala) {
+    var el = document.getElementById(containerId);
+    el.innerHTML = DIA_ORDEM.map(function (d) {
+      return '<div class="escala-dia-linha"><span class="escala-dia-label">' + DIA_LABEL[d] + '</span>' +
+        '<input type="time" data-dia="' + d + '" value="' + escHtml(escala[d] || '') + '"></div>';
+    }).join('');
+  }
+
+  var editandoEscalaId = null;
+
+  function abrirModalEscala(id) {
+    var p = encontrarPosto(id);
+    if (!p) return;
+    editandoEscalaId = id;
+    document.getElementById('modalEscalaTitulo').textContent = '🕐 Escala — ' + p.nome;
+    renderCamposEscala('escalaCamposDia', p.escalaDia);
+    renderCamposEscala('escalaCamposNoite', p.escalaNoite);
+    document.getElementById('modalEscala').classList.add('show');
+  }
+  function fecharModalEscala() { document.getElementById('modalEscala').classList.remove('show'); editandoEscalaId = null; }
+
+  document.getElementById('btnEditarEscala').addEventListener('click', function () {
+    var id = document.getElementById('escalaSelectPosto').value;
+    if (!id) { showToast('⚠️ Selecione um posto para editar a escala.', 'error'); return; }
+    abrirModalEscala(id);
+  });
+  document.getElementById('btnFecharModalEscala').addEventListener('click', fecharModalEscala);
+  document.getElementById('modalEscala').addEventListener('click', function (e) { if (e.target === this) fecharModalEscala(); });
+
+  document.getElementById('btnAplicarTodosDia').addEventListener('click', function () {
+    var primeiro = document.querySelector('#escalaCamposDia input[data-dia="SEG"]').value;
+    document.querySelectorAll('#escalaCamposDia input').forEach(function (inp) { inp.value = primeiro; });
+  });
+  document.getElementById('btnAplicarTodosNoite').addEventListener('click', function () {
+    var primeiro = document.querySelector('#escalaCamposNoite input[data-dia="SEG"]').value;
+    document.querySelectorAll('#escalaCamposNoite input').forEach(function (inp) { inp.value = primeiro; });
+  });
+
+  document.getElementById('btnSalvarEscala').addEventListener('click', function () {
+    var p = encontrarPosto(editandoEscalaId);
+    if (!p) return;
+    document.querySelectorAll('#escalaCamposDia input').forEach(function (inp) { p.escalaDia[inp.dataset.dia] = inp.value || ''; });
+    document.querySelectorAll('#escalaCamposNoite input').forEach(function (inp) { p.escalaNoite[inp.dataset.dia] = inp.value || ''; });
+    savePostos();
+    renderInfoBox();
+    fecharModalEscala();
+    showToast('✅ Escala salva.', 'success');
+  });
+
+  // ── Fechar / Testar / Forçar sync ──
+  document.getElementById('btnFecharAlertas').addEventListener('click', function () {
+    var btnFt = document.querySelector('.tab-btn[data-tab="tab-ft"]');
+    if (btnFt) btnFt.click();
+  });
+  document.getElementById('btnTestarAlerta').addEventListener('click', function () {
+    var pendencias = calcularPendencias(true);
+    if (!pendencias.dia.length && !pendencias.noite.length) {
+      showToast('✅ Nenhuma FT pendente no momento — tudo em dia.', 'success');
+      return;
+    }
+    exibirAlertaFlutuante(pendencias);
+  });
+  document.getElementById('btnForcarSyncAlertas').addEventListener('click', function () {
+    savePostos(); saveConfig();
+    if (window.SyncEngine) SyncEngine.flush();
+    showToast('☁️ Sincronização com Firebase solicitada.', 'success');
+  });
+
+  document.getElementById('btnReconfigurarBanco').addEventListener('click', function () {
+    if (!confirm('Isso vai apagar as credenciais do banco de dados salvas neste aparelho e todos os dados locais (colaboradores, postos, FTs, bicos). Você precisará informar as credenciais novamente. Deseja continuar?')) return;
+    if (window.FT_reconfigurarBanco) window.FT_reconfigurarBanco();
+  });
+
+  document.getElementById('btnZerarDadosLocais').addEventListener('click', function () {
+    if (!confirm('Isso vai apagar todos os dados salvos neste aparelho (colaboradores, postos, FTs, bicos), mantendo as credenciais do banco de dados. Os dados no Firebase não são apagados. Deseja continuar?')) return;
+    if (window.FT_zerarDadosLocais) window.FT_zerarDadosLocais();
+  });
+
+  function refresh() {
+    renderInfoBox();
+    renderPeriodoToggle();
+    renderPostosMonitorados();
+    popularSelectEscala();
+  }
+
+  // Encadeia com o hook de troca de aba
+  var prevTabShow = window.FT_onTabShow;
+  window.FT_onTabShow = function (tab) {
+    if (typeof prevTabShow === 'function') prevTabShow(tab);
+    if (tab === 'tab-alertas') refresh();
+  };
+  document.getElementById('btnAbrirAlertas').addEventListener('click', function () {
+    var btn = document.querySelector('.tab-btn[data-tab="tab-alertas"]');
+    if (btn) btn.click();
+  });
+
+  // Encadeia com atualizações remotas (Firebase)
+  var prevRemoteUpdate6 = window.FT_onRemoteUpdate;
+  window.FT_onRemoteUpdate = function (key, value) {
+    if (typeof prevRemoteUpdate6 === 'function') prevRemoteUpdate6(key, value);
+    if (key === LS_CONFIG) { config = value || config; }
+    if (key === LS_POSTOS) { postosMonitorados = (value || []).map(garantirEstrutura); }
+    if (key === LS_CIENTE) { ciente = value || {}; }
+    if (!document.getElementById('tab-alertas').classList.contains('hidden')) refresh();
+  };
+
+  // ════════════════════════════════════════════════════════
+  // MOTOR DE DETECÇÃO — verifica FT lançada x escala real
+  // ════════════════════════════════════════════════════════
+  function classificarTurno(horarioStr) {
+    var m = /^(\d{1,2}):/.exec(String(horarioStr || '').trim());
+    if (!m) return null;
+    var h = parseInt(m[1], 10);
+    return (h >= 5 && h < 17) ? 'dia' : 'noite';
+  }
+
+  function getRegistrosFT() {
+    return (window.FT_Store && FT_Store.getSync('ft_registros')) || loadJSON('ft_registros', []);
+  }
+
+  function dataRefFT(ft) {
+    var iso = ft.dataHora || ft.criadoEm;
+    if (!iso) return null;
+    var d = new Date(iso);
+    return isNaN(d.getTime()) ? null : ymd(d);
+  }
+
+  function existeFT(nomePosto, periodo, dataAlvo) {
+    var registros = getRegistrosFT();
+    var nomeNorm = (nomePosto || '').trim().toLowerCase();
+    return registros.some(function (ft) {
+      if ((ft.posto || '').trim().toLowerCase() !== nomeNorm) return false;
+      if (classificarTurno(ft.horario) !== periodo) return false;
+      return dataRefFT(ft) === dataAlvo;
+    });
+  }
+
+  // "Ciente" e "Lembrar em 1h" nunca dispensam em definitivo — apenas adiam por um
+  // tempo curto. Enquanto a FT não for lançada, o alerta volta a aparecer sozinho.
+  function estaCienteOuAdiado(chaveId, agora) {
+    var reg = ciente[chaveId];
+    if (!reg || !reg.ate) return false;
+    return agora.getTime() < new Date(reg.ate).getTime();
+  }
+
+  // Calcula pendências (postos sem FT lançada), varrendo hoje + os dois dias
+  // anteriores. Para hoje, só considera pendente depois do horário de entrada
+  // configurado; para os dois dias anteriores, o turno já passou por completo,
+  // então é sempre verificado (continua cobrando até a FT ser lançada).
+  // forcarIgnorarCiente=true é usado pelo botão "Testar Alerta Agora".
+  function calcularPendencias(forcarIgnorarCiente) {
+    var agoraRef = new Date();
+    var horaHoje = horaAtualStr();
+    var resultado = { dia: [], noite: [] };
+
+    for (var offset = 0; offset <= 2; offset++) {
+      (function (offset) {
+        var dataRef = addDias(agoraRef, -offset);
+        var dataRefStr = ymd(dataRef);
+        var diaRefKey = diaSemanaKey(dataRef);
+        var diaSeguinteKey = diaSemanaKey(addDias(dataRef, 1));
+        var ehHoje = offset === 0;
+
+        postosMonitorados.forEach(function (p) {
+          if (!p.ativo) return;
+          if (!regraAplicaHoje(p.regra, dataRef)) return;
+
+          // ── Turno Dia ──
+          if (p.ativoDia && config.diaAtivo) {
+            var entradaDia = p.escalaDia[diaRefKey] || DEFAULT_ENTRADA_DIA;
+            var jaPassouDia = ehHoje ? (horaHoje >= entradaDia) : true;
+            if (entradaDia && jaPassouDia) {
+              var chaveDia = p.id + '_dia_' + dataRefStr;
+              if (forcarIgnorarCiente || !estaCienteOuAdiado(chaveDia, agoraRef)) {
+                if (!existeFT(p.nome, 'dia', dataRefStr)) {
+                  var fimDia = (p.ativoNoite && p.escalaNoite[diaRefKey]) ? p.escalaNoite[diaRefKey] : DEFAULT_ENTRADA_NOITE;
+                  resultado.dia.push({
+                    id: p.id, chave: chaveDia, nome: p.nome, periodo: 'dia',
+                    inicio: entradaDia, fim: fimDia, cruzaMeiaNoite: false, refData: dataRefStr
+                  });
+                }
+              }
+            }
+          }
+
+          // ── Turno Noite ──
+          if (p.ativoNoite && config.noiteAtivo) {
+            var entradaNoite = p.escalaNoite[diaRefKey] || DEFAULT_ENTRADA_NOITE;
+            var jaPassouNoite = ehHoje ? (horaHoje >= entradaNoite) : true;
+            if (entradaNoite && jaPassouNoite) {
+              var chaveNoite = p.id + '_noite_' + dataRefStr;
+              if (forcarIgnorarCiente || !estaCienteOuAdiado(chaveNoite, agoraRef)) {
+                if (!existeFT(p.nome, 'noite', dataRefStr)) {
+                  var fimNoite = (p.ativoDia && p.escalaDia[diaSeguinteKey]) ? p.escalaDia[diaSeguinteKey] : DEFAULT_ENTRADA_DIA;
+                  resultado.noite.push({
+                    id: p.id, chave: chaveNoite, nome: p.nome, periodo: 'noite',
+                    inicio: entradaNoite, fim: fimNoite, cruzaMeiaNoite: true, refData: dataRefStr
+                  });
+                }
+              }
+            }
+          }
+        });
+      })(offset);
+    }
+
+    return resultado;
+  }
+
+  // ── Alerta flutuante (agrupado por período, no estilo "FTs pendentes") ──
+  var alertaFlutuanteAberto = false;
+
+  function beep() {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      var ctx = new Ctx();
+      var osc = ctx.createOscillator(); var gain = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.5);
+    } catch (e) { /* áudio é apenas reforço opcional */ }
+  }
+
+  function notificarSistema(qtd) {
+    try {
+      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+      new Notification('🔔 FTs pendentes', { body: qtd + ' posto(s) sem FT lançada para o período.', tag: 'ft-alertas-pendencias' });
+    } catch (e) {}
+  }
+
+  function irParaLancamento(nomePosto) {
+    var btnFt = document.querySelector('.tab-btn[data-tab="tab-ft"]');
+    if (btnFt) btnFt.click();
+    setTimeout(function () {
+      var sel = document.getElementById('posto');
+      if (sel) { sel.value = nomePosto; sel.dispatchEvent(new Event('change')); }
+      var form = document.getElementById('ftForm');
+      if (form && typeof form.scrollIntoView === 'function') form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }
+
+  function fecharAlertaFlutuante() {
+    var el = document.getElementById('falertPendencias');
+    if (el) el.remove();
+    var container = document.getElementById('floatingAlerts');
+    if (container) container.classList.remove('has-alert');
+    alertaFlutuanteAberto = false;
+  }
+
+  function renderGrupoPeriodo(itens, tituloPeriodo, icone) {
+    if (!itens.length) return '';
+    var html = '<div class="pendente-periodo-titulo">' + icone + ' Período ' + tituloPeriodo + ' ' + icone + '</div>';
+    html += itens.map(function (it) {
+      var fimTxt = it.fim + (it.cruzaMeiaNoite ? ' (+1 dia)' : '');
+      return '<div class="pendente-card" data-chave="' + it.chave + '" data-posto="' + escHtml(it.nome) + '">' +
+        '<span class="pendente-icon">' + icone + '</span>' +
+        '<div class="pendente-info">' +
+          '<div class="pendente-posto">&#x1F4CD; ' + escHtml(it.nome) + '</div>' +
+          '<div class="pendente-detalhe">Sem FT &middot; ' + it.inicio + ' &rarr; ' + fimTxt + ' &middot; ref. ' + fmtBR(it.refData) + '</div>' +
+        '</div>' +
+        '<span class="pendente-dot"></span>' +
+      '</div>';
+    }).join('');
+    return html;
+  }
+
+  function exibirAlertaFlutuante(pendencias) {
+    fecharAlertaFlutuante();
+    var container = document.getElementById('floatingAlerts');
+    if (!container) return;
+
+    var total = pendencias.dia.length + pendencias.noite.length;
+    var tituloTurno = pendencias.noite.length && !pendencias.dia.length ? 'Turno Noturno'
+      : (pendencias.dia.length && !pendencias.noite.length ? 'Turno Diurno' : 'Turnos Dia e Noite');
+
+    var card = document.createElement('div');
+    card.className = 'floating-alert-card pendencias';
+    card.id = 'falertPendencias';
+    card.innerHTML =
+      '<div class="floating-alert-icon">&#x26A0;&#xFE0F;</div>' +
+      '<div class="floating-alert-head">&#x23F0; FTs Pendentes — ' + tituloTurno + '</div>' +
+      '<div class="floating-alert-body">Os postos abaixo <strong>não possuem FT lançada</strong> para o período.</div>' +
+      renderGrupoPeriodo(pendencias.dia, 'Dia', '&#x2600;&#xFE0F;') +
+      renderGrupoPeriodo(pendencias.noite, 'Noite', '&#x1F319;') +
+      '<div class="floating-alert-actions">' +
+        '<button class="fa-btn-adiar" data-acao="adiar">&#x23F8; Lembrar em 1h</button>' +
+        '<button class="fa-btn-ciente" data-acao="ciente">&#x2714; Ciente — Vou lançar agora</button>' +
+      '</div>' +
+      '<a class="fa-link-config" id="faLinkConfig">&#x2699;&#xFE0F; Configurar Postos Monitorados</a>';
+    container.classList.add('has-alert');
+
+    card.addEventListener('click', function (e) {
+      var linkConfig = e.target.closest('#faLinkConfig');
+      if (linkConfig) {
+        fecharAlertaFlutuante();
+        var btn = document.querySelector('.tab-btn[data-tab="tab-alertas"]');
+        if (btn) btn.click();
+        return;
+      }
+      var pendCard = e.target.closest('.pendente-card');
+      if (pendCard && !e.target.closest('button')) { irParaLancamento(pendCard.dataset.posto); return; }
+
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      var acao = btn.dataset.acao;
+      var todasChaves = pendencias.dia.concat(pendencias.noite).map(function (it) { return it.chave; });
+      if (acao === 'ciente') {
+        var ateCiente = new Date(Date.now() + 20 * 60 * 1000).toISOString();
+        todasChaves.forEach(function (chave) { ciente[chave] = { ate: ateCiente }; });
+        saveCiente();
+        fecharAlertaFlutuante();
+        showToast('✅ Ok! Vamos lembrar de novo em 20min caso ainda não tenha lançado.', 'success');
+      } else if (acao === 'adiar') {
+        var ate = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+        todasChaves.forEach(function (chave) { ciente[chave] = { ate: ate }; });
+        saveCiente();
+        fecharAlertaFlutuante();
+        showToast('⏱️ Alerta adiado por 1 hora — volta sozinho se ainda estiver pendente.', 'success');
+      }
+    });
+
+    container.appendChild(card);
+    alertaFlutuanteAberto = true;
+    beep();
+    notificarSistema(total);
+  }
+
+  function checkAlertas() {
+    if (alertaFlutuanteAberto) return; // já exibindo — evita empilhar
+    var pendencias = calcularPendencias(false);
+    if (pendencias.dia.length || pendencias.noite.length) exibirAlertaFlutuante(pendencias);
+  }
+
+  if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+    try { Notification.requestPermission(); } catch (e) {}
+  }
+
+  setTimeout(checkAlertas, 4000);
+  setInterval(checkAlertas, 60000);
+
+  return { refresh: refresh, calcularPendencias: calcularPendencias };
+}());
+</script>
+
+</body>
+</html>
