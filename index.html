@@ -2131,6 +2131,9 @@ var FTModule = (function () {
       handleMotivoChange();
       btn.disabled = false;
       btn.innerHTML = '&#x1F4BE; Registrar FT';
+      if (window.AlertasModule && typeof AlertasModule.recheckImediato === 'function') {
+        AlertasModule.recheckImediato();
+      }
     }, 300);
   }
 
@@ -2691,6 +2694,89 @@ var BicoFixoModule = (function () {
   function fmtMoeda(v) { return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
   function estimativaMensal(valor, numDias) { return (parseFloat(valor) || 0) * (numDias || 0) * SEMANAS_POR_MES; }
 
+  // ── Classifica o período (dia/noite) a partir do horário de início do bico ──
+  function classificarPeriodoBico(horarioStr) {
+    var m = /^(\d{1,2}):/.exec(String(horarioStr || '').trim());
+    if (!m) return null;
+    var h = parseInt(m[1], 10);
+    return (h >= 5 && h < 17) ? 'dia' : 'noite';
+  }
+
+  function diasSobrepoe(a, b) {
+    a = a || []; b = b || [];
+    return a.some(function (d) { return b.indexOf(d) !== -1; });
+  }
+
+  var IDX_DIA = { DOM: 0, SEG: 1, TER: 2, QUA: 3, QUI: 4, SEX: 5, SAB: 6 };
+  var MIN_SEMANA = 7 * 1440;
+
+  // ── Converte "06:00 – 18:00" (ou variações) em { inicioMin, duracaoMin }.
+  //    Se cruza meia-noite (ex: 18:00–06:00) a duração já contempla isso. ──
+  function horarioParaIntervalo(horarioStr) {
+    var tokens = String(horarioStr || '').match(/\d{1,2}:\d{2}/g);
+    if (!tokens || tokens.length < 2) return null;
+    function paraMin(t) { var p = t.split(':'); return parseInt(p[0], 10) * 60 + parseInt(p[1], 10); }
+    var inicioMin = paraMin(tokens[0]);
+    var fimMin = paraMin(tokens[1]);
+    var duracaoMin = fimMin - inicioMin;
+    if (duracaoMin <= 0) duracaoMin += 1440; // cruza a meia-noite
+    return { inicioMin: inicioMin, duracaoMin: duracaoMin };
+  }
+
+  // ── Gera os intervalos ocupados (em minutos, numa linha do tempo semanal
+  //    circular de 0 a 10080) para cada dia selecionado do bico. ──
+  function ocupacaoSemanal(dias, horarioStr) {
+    var intervalo = horarioParaIntervalo(horarioStr);
+    if (!intervalo) return null;
+    return (dias || []).map(function (d) {
+      var start = IDX_DIA[d] * 1440 + intervalo.inicioMin;
+      return { start: start, end: start + intervalo.duracaoMin };
+    });
+  }
+
+  function expandirCircular(iv) {
+    var s = ((iv.start % MIN_SEMANA) + MIN_SEMANA) % MIN_SEMANA;
+    var e = s + (iv.end - iv.start);
+    if (e <= MIN_SEMANA) return [[s, e]];
+    return [[s, MIN_SEMANA], [0, e - MIN_SEMANA]];
+  }
+
+  function ocupacoesSobrepoe(listaA, listaB) {
+    for (var i = 0; i < listaA.length; i++) {
+      var segsA = expandirCircular(listaA[i]);
+      for (var j = 0; j < listaB.length; j++) {
+        var segsB = expandirCircular(listaB[j]);
+        for (var x = 0; x < segsA.length; x++) {
+          for (var y = 0; y < segsB.length; y++) {
+            if (segsA[x][0] < segsB[y][1] && segsB[y][0] < segsA[x][1]) return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  // ── Bloqueio único: um colaborador não pode estar escalado em dois bicos
+  //    cujos horários se cruzem no mesmo dia da semana — vale para dia e para
+  //    noite igualmente (inclusive plantão que vira a madrugada). ──
+  function checarConflitoHorario(colaborador, horario, dias, ignorarId) {
+    var colabNorm = (colaborador || '').trim().toLowerCase();
+    var ocupA = ocupacaoSemanal(dias, horario);
+    return bicos.find(function (b) {
+      if (ignorarId && b.id === ignorarId) return false;
+      if (!b.ativo) return false;
+      if ((b.colaborador || '').trim().toLowerCase() !== colabNorm) return false;
+      if (!ocupA) {
+        // horário em texto livre (ex: "Escala Especial") — não dá pra calcular
+        // sobreposição, então cai para checagem exata por segurança.
+        return (b.horario || '').trim().toLowerCase() === (horario || '').trim().toLowerCase() && diasSobrepoe(b.dias, dias);
+      }
+      var ocupB = ocupacaoSemanal(b.dias, b.horario);
+      if (!ocupB) return false;
+      return ocupacoesSobrepoe(ocupA, ocupB);
+    }) || null;
+  }
+
   function popularSelects() {
     var postos = window.CadastrosModule ? CadastrosModule.getPostos() : [];
     var colaboradores = window.CadastrosModule ? CadastrosModule.getColaboradores() : [];
@@ -2889,6 +2975,12 @@ var BicoFixoModule = (function () {
       showToast('⚠️ Selecione ao menos um dia da semana.', 'error'); return;
     }
 
+    var conflito = checarConflitoHorario(colaborador, horario, diasSelecionados, editandoId);
+    if (conflito) {
+      showToast('⚠️ ' + colaborador + ' já está escalado em outro bico fixo (' + conflito.horario + ') que se cruza com esse horário, no mesmo dia. Um colaborador não pode estar em dois lugares ao mesmo tempo.', 'error');
+      return;
+    }
+
     if (editandoId) {
       var idx = bicos.findIndex(function (b) { return b.id === editandoId; });
       if (idx !== -1) {
@@ -2912,6 +3004,9 @@ var BicoFixoModule = (function () {
     limparForm();
     renderSummary();
     renderLista();
+    if (window.AlertasModule && typeof AlertasModule.recheckImediato === 'function') {
+      AlertasModule.recheckImediato();
+    }
   }
 
   document.getElementById('bicoDias').addEventListener('click', function (e) {
@@ -3649,10 +3744,29 @@ var AlertasModule = (function () {
   function existeFT(nomePosto, periodo, dataAlvo) {
     var registros = getRegistrosFT();
     var nomeNorm = (nomePosto || '').trim().toLowerCase();
-    return registros.some(function (ft) {
+    var jaLancado = registros.some(function (ft) {
       if ((ft.posto || '').trim().toLowerCase() !== nomeNorm) return false;
       if (classificarTurno(ft.horario) !== periodo) return false;
       return dataRefFT(ft) === dataAlvo;
+    });
+    if (jaLancado) return true;
+    return cobertoPorBicoFixo(nomePosto, periodo, dataAlvo);
+  }
+
+  // ── Um bico fixo ativo, que cai naquele dia da semana e mesmo período, também
+  //    conta como cobertura do posto (evita alerta pra quem já tem escala fixa) ──
+  function cobertoPorBicoFixo(nomePosto, periodo, dataAlvoStr) {
+    var bicos = loadJSON('ft_bico_fixo', []);
+    if (!bicos.length) return false;
+    var d = new Date(dataAlvoStr + 'T00:00:00');
+    if (isNaN(d.getTime())) return false;
+    var diaKey = diaSemanaKey(d);
+    var nomeNorm = (nomePosto || '').trim().toLowerCase();
+    return bicos.some(function (b) {
+      if (!b.ativo) return false;
+      if ((b.posto || '').trim().toLowerCase() !== nomeNorm) return false;
+      if ((b.dias || []).indexOf(diaKey) === -1) return false;
+      return classificarTurno(b.horario) === periodo;
     });
   }
 
@@ -3789,7 +3903,7 @@ var AlertasModule = (function () {
     return html;
   }
 
-  function exibirAlertaFlutuante(pendencias) {
+  function exibirAlertaFlutuante(pendencias, silencioso) {
     fecharAlertaFlutuante();
     var container = document.getElementById('floatingAlerts');
     if (!container) return;
@@ -3846,14 +3960,30 @@ var AlertasModule = (function () {
 
     container.appendChild(card);
     alertaFlutuanteAberto = true;
-    beep();
-    notificarSistema(total);
+    if (!silencioso) {
+      beep();
+      notificarSistema(total);
+    }
   }
 
   function checkAlertas() {
     if (alertaFlutuanteAberto) return; // já exibindo — evita empilhar
     var pendencias = calcularPendencias(false);
     if (pendencias.dia.length || pendencias.noite.length) exibirAlertaFlutuante(pendencias);
+  }
+
+  // Chamada logo após lançar uma FT (inclusive Bico Fixo) para que, se o alerta
+  // de pendências já estiver na tela, ele suma na hora (ou se atualize) em vez
+  // de esperar o próximo ciclo de 60s.
+  function recheckImediato() {
+    if (!alertaFlutuanteAberto) return;
+    var pendencias = calcularPendencias(false);
+    if (!pendencias.dia.length && !pendencias.noite.length) {
+      fecharAlertaFlutuante();
+      showToast('✅ Pendência resolvida — alerta encerrado.', 'success');
+    } else {
+      exibirAlertaFlutuante(pendencias, true);
+    }
   }
 
   if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
@@ -3863,7 +3993,7 @@ var AlertasModule = (function () {
   setTimeout(checkAlertas, 4000);
   setInterval(checkAlertas, 60000);
 
-  return { refresh: refresh, calcularPendencias: calcularPendencias };
+  return { refresh: refresh, calcularPendencias: calcularPendencias, recheckImediato: recheckImediato };
 }());
 </script>
 
