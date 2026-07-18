@@ -395,14 +395,46 @@
   .hist-summary strong { color: var(--accent1); }
   .hist-summary .hs-valor { color: var(--accent2); font-weight: 700; }
 
-  .hist-export-row { display: flex; gap: 8px; margin-bottom: 16px; }
-  .btn-export {
-    flex: 1; border: 1.5px solid var(--border); border-radius: 10px; background: var(--card); color: var(--text);
-    font-family: 'Exo 2', sans-serif; font-size: .72rem; font-weight: 700; padding: 10px 4px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 5px; transition: border-color .2s;
+  .hist-export-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
   }
-  .btn-export:hover { border-color: var(--accent1); }
-  .btn-export:disabled { opacity: .5; cursor: default; }
+  .btn-export {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    border: 1.5px solid var(--border); border-radius: var(--radius); background: var(--card);
+    color: var(--text); font-family: 'Exo 2', sans-serif; font-size: .7rem; font-weight: 700;
+    letter-spacing: .3px; text-transform: uppercase; padding: 14px 6px 12px; cursor: pointer;
+    box-shadow: var(--shadow); overflow: hidden; min-width: 0;
+    transition: border-color .2s, transform .15s ease, background .2s;
+  }
+  .btn-export::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--btn-color, var(--accent1));
+  }
+  .btn-export-icon {
+    width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 1.05rem; background: var(--btn-color-bg, rgba(255,255,255,.06)); flex-shrink: 0;
+  }
+  .btn-export-label { white-space: nowrap; }
+  .btn-export:hover { border-color: var(--btn-color, var(--accent1)); transform: translateY(-2px); background: var(--card); }
+  .btn-export:active { transform: translateY(0); }
+  .btn-export:disabled { opacity: .5; cursor: default; transform: none; }
+
+  .btn-export-csv    { --btn-color: var(--accent3); --btn-color-bg: rgba(69,170,242,.15); }
+  .btn-export-excel  { --btn-color: var(--accent2); --btn-color-bg: rgba(38,222,129,.15); }
+  .btn-export-pdf    { --btn-color: var(--danger);  --btn-color-bg: rgba(252,92,101,.15); }
+  .btn-export-csv    .btn-export-label { color: var(--accent3); }
+  .btn-export-excel  .btn-export-label { color: var(--accent2); }
+  .btn-export-pdf    .btn-export-label { color: var(--danger); }
+
+  @media (max-width: 360px) {
+    .hist-export-row { grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; }
+    .btn-export { padding: 12px 4px 10px; font-size: .66rem; }
+    .btn-export-icon { width: 28px; height: 28px; font-size: .95rem; }
+  }
 
   .hist-list { display: flex; flex-direction: column; gap: 10px; }
   .hist-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
@@ -830,8 +862,14 @@
         </div>
       </div>
       <div class="hist-export-row">
-        <button class="btn-export" id="btnGeralExportExcel">&#x1F4CA; Excel</button>
-        <button class="btn-export" id="btnGeralExportPDF">&#x1F4D1; PDF</button>
+        <button class="btn-export btn-export-excel" id="btnGeralExportExcel">
+          <span class="btn-export-icon">&#x1F4CA;</span>
+          <span class="btn-export-label">Excel</span>
+        </button>
+        <button class="btn-export btn-export-pdf" id="btnGeralExportPDF">
+          <span class="btn-export-icon">&#x1F4D1;</span>
+          <span class="btn-export-label">PDF</span>
+        </button>
       </div>
     </div>
   </div>
@@ -878,9 +916,18 @@
     </div>
 
     <div class="hist-export-row">
-      <button class="btn-export" id="btnExportCSV">&#x1F4C4; CSV</button>
-      <button class="btn-export" id="btnExportExcel">&#x1F4CA; Excel</button>
-      <button class="btn-export" id="btnExportPDF">&#x1F4D1; PDF</button>
+      <button class="btn-export btn-export-csv" id="btnExportCSV">
+        <span class="btn-export-icon">&#x1F4C4;</span>
+        <span class="btn-export-label">CSV</span>
+      </button>
+      <button class="btn-export btn-export-excel" id="btnExportExcel">
+        <span class="btn-export-icon">&#x1F4CA;</span>
+        <span class="btn-export-label">Excel</span>
+      </button>
+      <button class="btn-export btn-export-pdf" id="btnExportPDF">
+        <span class="btn-export-icon">&#x1F4D1;</span>
+        <span class="btn-export-label">PDF</span>
+      </button>
     </div>
 
     <div class="hist-list" id="histLista"><p class="empty-state">Nenhum registro encontrado.</p></div>
@@ -1168,6 +1215,7 @@
   var CONFIG_KEY = 'ft_firebase_user_config';
   var CAMPOS = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
   var DATA_KEYS = ['ft_colaboradores', 'ft_postos', 'ft_registros', 'ft_bico_fixo', 'ft_horarios_custom', 'bico_horarios_custom', 'ft_alertas_ciente', 'ft_alertas_config', 'ft_alertas_postos_v2'];
+  window.FT_DATA_KEYS = DATA_KEYS; // reutilizado pelo motor de sync (Firebase) para saber quais chaves espelhar entre aparelhos
 
   function getConfig() {
     try { return JSON.parse(localStorage.getItem(CONFIG_KEY) || 'null'); } catch (e) { return null; }
@@ -1484,7 +1532,7 @@
       });
 
       openDB(function () {
-        ['ft_registros', 'ft_colaboradores', 'ft_postos', 'ft_bico_fixo'].forEach(function (key) {
+        (window.FT_DATA_KEYS || ['ft_registros', 'ft_colaboradores', 'ft_postos', 'ft_bico_fixo']).forEach(function (key) {
           var raw = localStorage.getItem(key);
           if (raw) { try { FT_Store.set(key, JSON.parse(raw)); } catch (e) {} }
         });
@@ -1536,7 +1584,7 @@
       SyncEngine._lastSyncError = null;
       if (!snap.exists) return;
       var data = snap.data() || {};
-      ['ft_colaboradores', 'ft_postos', 'ft_registros', 'ft_bico_fixo'].forEach(function (key) {
+      (window.FT_DATA_KEYS || ['ft_colaboradores', 'ft_postos', 'ft_registros', 'ft_bico_fixo']).forEach(function (key) {
         if (data[key] === undefined) return;
         var local = FT_Store.getSync(key);
         if (JSON.stringify(local) !== JSON.stringify(data[key])) {
