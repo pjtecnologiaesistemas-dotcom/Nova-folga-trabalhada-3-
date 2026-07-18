@@ -443,8 +443,8 @@
   .bico-estimate { font-size: .8rem; color: var(--muted); margin-top: 6px; }
   .bico-estimate strong { color: var(--accent2); }
 
-  .bico-filters-row { display: flex; gap: 10px; margin-bottom: 14px; }
-  .bico-filters-row > * { flex: 1; min-width: 0; }
+  .bico-filters-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .bico-filters-row > * { flex: 1 1 140px; min-width: 0; }
 
   .bico-list { display: flex; flex-direction: column; gap: 10px; }
   .bico-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
@@ -816,6 +816,24 @@
       <h2 class="col-amber">&#x1F30D; Consolidado por Posto</h2>
       <div id="geralPorPosto"><p class="empty-state">Sem dados no período.</p></div>
     </div>
+
+    <div class="cadastro-section">
+      <h2 class="col-blue">&#x1F4C4; Relatórios</h2>
+      <div class="hist-filters-row">
+        <div>
+          <label>Tipo de relatório</label>
+          <select id="geralRelatorioTipo">
+            <option value="geral">Geral (resumo por posto)</option>
+            <option value="colaborador">Por Colaborador</option>
+            <option value="posto">Por Posto (detalhado)</option>
+          </select>
+        </div>
+      </div>
+      <div class="hist-export-row">
+        <button class="btn-export" id="btnGeralExportExcel">&#x1F4CA; Excel</button>
+        <button class="btn-export" id="btnGeralExportPDF">&#x1F4D1; PDF</button>
+      </div>
+    </div>
   </div>
   <!-- ABA: HISTÓRICO -->
   <div class="tab-panel hidden" id="tab-historico">
@@ -877,7 +895,7 @@
       </div>
       <div class="bico-summary-card">
         <div class="bico-summary-value col-purple" id="bicoValorMensal">R$ 0,00</div>
-        <div class="bico-summary-label">Estimativa mensal</div>
+        <div class="bico-summary-label" id="bicoValorMensalLabel">Valor total</div>
       </div>
     </div>
 
@@ -953,6 +971,7 @@
         <option value="inativo">Somente inativos</option>
       </select>
       <select id="bicoFiltroPosto"><option value="">Todos os postos</option></select>
+      <select id="bicoFiltroColaborador"><option value="">Todos os colaboradores</option></select>
     </div>
 
     <div class="bico-list" id="bicoLista"><p class="empty-state">Nenhum bico fixo cadastrado.</p></div>
@@ -2794,11 +2813,17 @@ var BicoFixoModule = (function () {
     fillSelect('bicoColaborador', colaboradores, true);
     fillSelect('bicoPosto', postos, true);
 
-    var selFiltro = document.getElementById('bicoFiltroPosto');
-    var prev = selFiltro.value;
-    selFiltro.innerHTML = '<option value="">Todos os postos</option>' +
+    var selFiltroPosto = document.getElementById('bicoFiltroPosto');
+    var prevPosto = selFiltroPosto.value;
+    selFiltroPosto.innerHTML = '<option value="">Todos os postos</option>' +
       sortAlpha(postos).map(function (p) { return '<option value="' + escHtml(p.nome) + '">' + escHtml(p.nome) + '</option>'; }).join('');
-    selFiltro.value = prev;
+    selFiltroPosto.value = prevPosto;
+
+    var selFiltroColab = document.getElementById('bicoFiltroColaborador');
+    var prevColab = selFiltroColab.value;
+    selFiltroColab.innerHTML = '<option value="">Todos os colaboradores</option>' +
+      sortAlpha(colaboradores).map(function (c) { return '<option value="' + escHtml(c.nome) + '">' + escHtml(c.nome) + '</option>'; }).join('');
+    selFiltroColab.value = prevColab;
   }
 
   function toggleDia(dia) {
@@ -2824,19 +2849,28 @@ var BicoFixoModule = (function () {
   var DIA_ORDEM = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
   function renderSummary() {
-    var ativos = bicos.filter(function (b) { return b.ativo; });
-    var totalMensal = ativos.reduce(function (acc, b) { return acc + estimativaMensal(b.valor, (b.dias || []).length); }, 0);
-    document.getElementById('bicoTotalAtivos').textContent = ativos.length;
-    document.getElementById('bicoValorMensal').textContent = fmtMoeda(totalMensal);
+    var filtrados = getFiltrados();
+    var ativosFiltrados = filtrados.filter(function (b) { return b.ativo; });
+    var totalValor = ativosFiltrados.reduce(function (acc, b) { return acc + estimativaMensal(b.valor, (b.dias || []).length); }, 0);
+
+    document.getElementById('bicoTotalAtivos').textContent = ativosFiltrados.length;
+    document.getElementById('bicoValorMensal').textContent = fmtMoeda(totalValor);
+
+    var colabFiltro = document.getElementById('bicoFiltroColaborador').value;
+    document.getElementById('bicoValorMensalLabel').textContent = colabFiltro
+      ? 'A receber — ' + colabFiltro
+      : 'Valor total';
   }
 
   function getFiltrados() {
     var status = document.getElementById('bicoFiltroStatus').value;
     var posto = document.getElementById('bicoFiltroPosto').value;
+    var colaborador = document.getElementById('bicoFiltroColaborador').value;
     return bicos.filter(function (b) {
       if (status === 'ativo' && !b.ativo) return false;
       if (status === 'inativo' && b.ativo) return false;
       if (posto && b.posto !== posto) return false;
+      if (colaborador && b.colaborador !== colaborador) return false;
       return true;
     }).sort(function (a, b) {
       if (a.ativo !== b.ativo) return a.ativo ? -1 : 1;
@@ -3045,8 +3079,9 @@ var BicoFixoModule = (function () {
   document.getElementById('bicoForm').addEventListener('submit', submitForm);
   setupHorarioToggleBico();
   document.getElementById('bicoCancelarEdicao').addEventListener('click', limparForm);
-  document.getElementById('bicoFiltroStatus').addEventListener('change', renderLista);
-  document.getElementById('bicoFiltroPosto').addEventListener('change', renderLista);
+  document.getElementById('bicoFiltroStatus').addEventListener('change', function () { renderSummary(); renderLista(); });
+  document.getElementById('bicoFiltroPosto').addEventListener('change', function () { renderSummary(); renderLista(); });
+  document.getElementById('bicoFiltroColaborador').addEventListener('change', function () { renderSummary(); renderLista(); });
 
   document.getElementById('bicoLista').addEventListener('click', function (e) {
     var editBtn = e.target.closest('.btn-edit-item');
@@ -3422,6 +3457,180 @@ var GeralModule = (function () {
     renderStats(lista);
     renderLista(lista);
   }
+
+  // ── Relatórios (Excel / PDF) — Geral / Por Colaborador / Por Posto ──
+  function nomeArquivoRelatorio(tipo, ext) {
+    var d = new Date();
+    var pad2 = function (n) { return String(n).padStart(2, '0'); };
+    var slugTipo = tipo === 'colaborador' ? 'por-colaborador' : (tipo === 'posto' ? 'por-posto' : 'geral');
+    return 'relatorio-' + slugTipo + '-' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '-' + pad2(d.getHours()) + pad2(d.getMinutes()) + '.' + ext;
+  }
+
+  function tituloRelatorio(tipo) {
+    if (tipo === 'colaborador') return 'Relatório Geral — Por Colaborador';
+    if (tipo === 'posto') return 'Relatório Geral — Por Posto (detalhado)';
+    return 'Relatório Geral — Resumo por Posto';
+  }
+
+  function agruparFtsPorColaborador(fts) {
+    var mapa = {};
+    fts.forEach(function (ft) {
+      var chave = (ft.substituto || 'Sem colaborador').trim() || 'Sem colaborador';
+      if (!mapa[chave]) mapa[chave] = { nome: chave, ftCount: 0, valor: 0, pago: 0, pendente: 0 };
+      var e = mapa[chave];
+      var v = parseFloat(ft.valor) || 0;
+      e.ftCount += 1;
+      e.valor += v;
+      if (ft.pago) e.pago += v; else e.pendente += v;
+    });
+    return Object.keys(mapa).map(function (k) { return mapa[k]; })
+      .sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }); });
+  }
+
+  // Monta as linhas do relatório já como objetos (chave = cabeçalho da coluna),
+  // usado tanto pelo Excel (uma coluna por chave) quanto pelo PDF.
+  function linhasRelatorio(tipo) {
+    var periodo = document.getElementById('geralPeriodo').value;
+    var fts = filtrarPorPeriodo(getRegistros(), periodo);
+
+    if (tipo === 'colaborador') {
+      return agruparFtsPorColaborador(fts).map(function (c) {
+        return {
+          'Colaborador': c.nome,
+          'FTs': c.ftCount,
+          'Valor Total': c.valor,
+          'Pago': c.pago,
+          'Pendente': c.pendente
+        };
+      });
+    }
+
+    if (tipo === 'posto') {
+      var ordenados = fts.slice().sort(function (a, b) {
+        return (a.posto || '').localeCompare(b.posto || '', 'pt-BR', { sensitivity: 'base' });
+      });
+      return ordenados.map(function (ft) {
+        return {
+          'Posto': ft.posto || '—',
+          'Data/Hora': fmtDataHoraBR(ft.dataHora || ft.criadoEm),
+          'Motivo': ft.motivo || '',
+          'Horário': ft.horario || '',
+          'Colaborador': ft.substituto || '',
+          'Quem Faltou': ft.quemFaltou || '',
+          'Valor': parseFloat(ft.valor) || 0,
+          'Status': ft.pago ? 'Pago' : 'Pendente'
+        };
+      });
+    }
+
+    // 'geral' — resumo consolidado por posto (o mesmo exibido na tela)
+    return montarConsolidado().map(function (p) {
+      return {
+        'Posto': p.nome,
+        'FTs': p.ftCount,
+        'Valor FTs': p.ftValor,
+        'Bicos Ativos': p.bicoCount,
+        'Bico Est./Mês': p.bicoValor,
+        'Pago': p.pago,
+        'Pendente': p.pendente
+      };
+    });
+  }
+
+  function exportGeralExcel() {
+    var tipo = document.getElementById('geralRelatorioTipo').value;
+    var linhas = linhasRelatorio(tipo);
+    if (!linhas.length) { showToast('⚠️ Nenhum registro para exportar.', 'error'); return; }
+    var btn = document.getElementById('btnGeralExportExcel');
+    btn.disabled = true;
+    FT_ensureLib(
+      function () { return typeof window.XLSX !== 'undefined'; },
+      FT_LIB_SOURCES.xlsx,
+      function () {
+        try {
+          var ws = XLSX.utils.json_to_sheet(linhas);
+          var wb = XLSX.utils.book_new();
+          var abaNome = tipo === 'colaborador' ? 'Por Colaborador' : (tipo === 'posto' ? 'Por Posto' : 'Geral');
+          XLSX.utils.book_append_sheet(wb, ws, abaNome);
+          XLSX.writeFile(wb, nomeArquivoRelatorio(tipo, 'xlsx'));
+          showToast('✅ Excel exportado.', 'success');
+        } catch (e) { console.error(e); showToast('❌ Erro ao gerar Excel.', 'error'); }
+        btn.disabled = false;
+      },
+      function () {
+        showToast('⚠️ Biblioteca de Excel indisponível offline.', 'error');
+        btn.disabled = false;
+      }
+    );
+  }
+
+  function exportGeralPDF() {
+    var tipo = document.getElementById('geralRelatorioTipo').value;
+    var linhas = linhasRelatorio(tipo);
+    if (!linhas.length) { showToast('⚠️ Nenhum registro para exportar.', 'error'); return; }
+    var btn = document.getElementById('btnGeralExportPDF');
+    btn.disabled = true;
+    FT_ensureLib(
+      function () { return typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined'; },
+      FT_LIB_SOURCES.jspdf,
+      function () {
+        try {
+          var doc = new window.jspdf.jsPDF(linhas.length && Object.keys(linhas[0]).length > 6 ? { orientation: 'landscape' } : undefined);
+          var pageW = doc.internal.pageSize.getWidth();
+          var y = 16;
+          doc.setFontSize(14);
+          doc.setFont(undefined, 'bold');
+          doc.text(tituloRelatorio(tipo), 14, y); y += 6;
+          doc.setFont(undefined, 'normal');
+          doc.setFontSize(9);
+          doc.text('Gerado em ' + new Date().toLocaleString('pt-BR'), 14, y); y += 8;
+
+          var headers = Object.keys(linhas[0]);
+          var margin = 14;
+          var usableW = pageW - margin * 2;
+          var colW = usableW / headers.length;
+          var colX = headers.map(function (h, i) { return margin + i * colW; });
+
+          function desenharCabecalho() {
+            doc.setFont(undefined, 'bold'); doc.setFontSize(8.5);
+            headers.forEach(function (h, i) { doc.text(String(h), colX[i], y); });
+            y += 3; doc.setDrawColor(180); doc.line(margin, y, pageW - margin, y); y += 5;
+            doc.setFont(undefined, 'normal');
+          }
+          desenharCabecalho();
+
+          var camposMonetarios = ['Valor', 'Valor Total', 'Valor FTs', 'Bico Est./Mês', 'Pago', 'Pendente'];
+
+          linhas.forEach(function (linha) {
+            if (y > 190 && doc.internal.pageSize.getWidth() > doc.internal.pageSize.getHeight()) {
+              // landscape: limite de página um pouco maior
+            }
+            var limitePagina = pageW > doc.internal.pageSize.getHeight() ? 190 : 275;
+            if (y > limitePagina) { doc.addPage(); y = 16; desenharCabecalho(); }
+            doc.setFontSize(8.5);
+            headers.forEach(function (h, i) {
+              var v = linha[h];
+              if (camposMonetarios.indexOf(h) !== -1) v = fmtMoedaBR(v);
+              var texto = String(v === undefined || v === null ? '—' : v);
+              doc.text(texto.slice(0, Math.max(6, Math.floor(colW / 1.8))), colX[i], y);
+            });
+            y += 5.5;
+          });
+
+          doc.save(nomeArquivoRelatorio(tipo, 'pdf'));
+          showToast('✅ PDF exportado.', 'success');
+        } catch (e) { console.error(e); showToast('❌ Erro ao gerar PDF.', 'error'); }
+        btn.disabled = false;
+      },
+      function () {
+        showToast('⚠️ Biblioteca de PDF indisponível offline.', 'error');
+        btn.disabled = false;
+      }
+    );
+  }
+
+  document.getElementById('btnGeralExportExcel').addEventListener('click', exportGeralExcel);
+  document.getElementById('btnGeralExportPDF').addEventListener('click', exportGeralPDF);
 
   document.getElementById('geralPeriodo').addEventListener('change', refresh);
   document.getElementById('geralBusca').addEventListener('input', refresh);
