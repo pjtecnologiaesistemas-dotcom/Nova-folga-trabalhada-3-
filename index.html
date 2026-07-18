@@ -57,7 +57,7 @@
   header {
     background: linear-gradient(135deg, #1a2133 0%, #0f1624 100%);
     border-bottom: 2px solid var(--accent1);
-    padding: 16px 20px 14px;
+    padding: 16px 64px 14px 20px;
     text-align: center;
     position: sticky;
     top: 0;
@@ -81,60 +81,73 @@
     letter-spacing: .4px; text-transform: uppercase; color: var(--accent1);
   }
 
-  /* ── Opções empilhadas dentro do menu de módulos ── */
-  #header-badges {
-    display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+  /* ── Menu lateral (rail) — sem faixa reservada: só o ☰ flutuante quando fechado ── */
+  #railToggle {
+    position: fixed; top: 14px; right: 14px; z-index: 9700;
+    width: 40px; height: 40px; border-radius: 11px; border: 1.5px solid var(--border);
+    background: rgba(255,255,255,.04); color: var(--accent1); font-size: 1.3rem;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: border-color .2s, background .2s;
   }
-  .drawer-handle-label {
-    font-family: 'Exo 2', sans-serif; font-size: .72rem; font-weight: 800; letter-spacing: .6px;
-    text-transform: uppercase; color: var(--muted); text-align: center; margin: 16px 0 4px;
-    padding-top: 14px; padding-bottom: 10px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  #railToggle:hover, #railToggle.open { border-color: var(--accent1); background: rgba(247,183,49,.12); }
+
+  #railMenu {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 9650;
+    width: 0; background: linear-gradient(180deg, #1a2133 0%, #0f1624 100%);
+    border-right: none; box-shadow: none;
+    display: flex; flex-direction: column; overflow: hidden;
+    padding-top: 64px;
+    transition: width .26s ease;
   }
-  #header-badges .btn-novo-ciclo, #header-badges .badge-auto,
-  #header-badges #sync-status, #header-badges #pending-badge, #header-badges #diag-sync-btn {
-    width: 100%; justify-content: center; box-sizing: border-box; min-height: 44px;
-    font-size: .8rem; padding: 10px 14px;
+  #railMenu.expanded {
+    width: min(78vw, 300px); overflow-y: auto;
+    border-right: 2px solid var(--accent1); box-shadow: 4px 0 24px rgba(0,0,0,.45);
   }
 
-  .btn-novo-ciclo {
-    border: none; border-radius: 20px; cursor: pointer;
-    background: linear-gradient(135deg, var(--accent1), var(--accent4));
-    color: #0d1117; font-family: 'Exo 2', sans-serif; font-size: .72rem; font-weight: 700;
-    padding: 6px 14px; letter-spacing: .3px;
+  .rail-items { display: none; flex-direction: column; flex-shrink: 0; }
+  #railMenu.expanded .rail-items { display: flex; }
+  .rail-item {
+    display: flex; align-items: center; gap: 16px; width: 100%; border: none;
+    background: transparent; cursor: pointer; padding: 13px 17px; text-align: left;
+    font-family: 'Exo 2', sans-serif; font-size: .74rem; font-weight: 700; letter-spacing: .3px;
+    text-transform: uppercase; color: var(--muted); border-left: 3px solid transparent;
+    white-space: nowrap; transition: background .2s, color .2s, border-color .2s;
+    flex: 0 0 auto; min-width: 0;
   }
+  .rail-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
+  .rail-item.active {
+    background: linear-gradient(90deg, rgba(247,183,49,.18) 0%, transparent 100%);
+    color: var(--accent1); border-left-color: var(--accent1);
+  }
+  .rail-icon { font-size: 1.25rem; line-height: 1; flex-shrink: 0; width: 22px; text-align: center; }
+  .rail-label { white-space: nowrap; }
 
-  .badge-auto {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: rgba(38,222,129,.15); border: 1px solid rgba(38,222,129,.4);
-    color: var(--accent2); font-size: .72rem; font-weight: 600;
-    padding: 4px 12px; border-radius: 20px; letter-spacing: .3px;
-  }
+  .rail-divider { display: none; height: 1px; background: var(--border); margin: 8px 14px; flex-shrink: 0; }
+  #railMenu.expanded .rail-divider { display: block; }
 
-  #sync-status {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: .72rem; font-weight: 700; padding: 4px 13px; border-radius: 20px;
-    letter-spacing: .3px; transition: background .4s, color .4s, border-color .4s; cursor: default;
+
+  #railBackdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 9640;
+    opacity: 0; pointer-events: none; transition: opacity .25s;
   }
-  #sync-status.online  { background: rgba(38,222,129,.15); border: 1px solid rgba(38,222,129,.45); color: var(--accent2); }
-  #sync-status.offline { background: rgba(252,92,101,.15); border: 1px solid rgba(252,92,101,.45); color: var(--danger); }
-  #sync-status.syncing { background: rgba(69,170,242,.15); border: 1px solid rgba(69,170,242,.45); color: var(--accent3); }
-  #sync-status.error   { background: rgba(253,150,68,.15); border: 1px solid rgba(253,150,68,.55); color: var(--accent4); cursor: pointer; }
-  #sync-status .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-  #sync-status.syncing .dot, #sync-status.error .dot { animation: pulse-dot 1s ease-in-out infinite; }
+  #railBackdrop.show { opacity: 1; pointer-events: all; }
+
+  #header-badges .rail-icon.dot {
+    width: 9px; height: 9px; border-radius: 50%; background: var(--muted); font-size: 0;
+  }
+  #sync-status.online  .rail-icon.dot { background: var(--accent2); box-shadow: 0 0 6px rgba(38,222,129,.6); }
+  #sync-status.offline .rail-icon.dot { background: var(--danger); box-shadow: 0 0 6px rgba(252,92,101,.6); }
+  #sync-status.syncing .rail-icon.dot { background: var(--accent3); box-shadow: 0 0 6px rgba(69,170,242,.6); animation: pulse-dot 1s ease-in-out infinite; }
+  #sync-status.error   .rail-icon.dot { background: var(--accent4); box-shadow: 0 0 6px rgba(253,150,68,.6); animation: pulse-dot 1s ease-in-out infinite; }
+  #sync-status.online  .rail-label { color: var(--accent2); }
+  #sync-status.offline .rail-label { color: var(--danger); }
+  #sync-status.syncing .rail-label { color: var(--accent3); }
+  #sync-status.error   .rail-label { color: var(--accent4); }
   @keyframes pulse-dot { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.6); } }
 
-  #pending-badge {
-    display: none; align-items: center; gap: 5px;
-    background: rgba(253,150,68,.15); border: 1px solid rgba(253,150,68,.45); color: var(--accent4);
-    font-size: .68rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: .3px; cursor: pointer;
-  }
-  #pending-badge.visible { display: inline-flex; }
-
-  #diag-sync-btn {
-    display: inline-flex; align-items: center; gap: 5px;
-    background: rgba(139,151,176,.12); border: 1px solid rgba(139,151,176,.4); color: #8b97b0;
-    font-size: .68rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: .3px; cursor: pointer;
-  }
+  #pending-badge { display: none; }
+  #pending-badge.visible { display: flex; }
+  #pending-badge .rail-icon, #pending-badge .rail-label { color: var(--accent4); }
 
   #diag-sync-panel {
     display: none; position: fixed; left: 0; right: 0; bottom: 0; max-height: 60vh;
@@ -145,6 +158,7 @@
   #diag-sync-panel .diag-head strong { color: #e7ecf5; font-size: .85rem; }
   #diag-sync-panel .diag-close { background: rgba(252,92,101,.15); border: 1px solid rgba(252,92,101,.45); color: #fc5c65; font-size: .72rem; font-weight: 700; padding: 4px 12px; border-radius: 14px; cursor: pointer; }
   #diag-sync-log { overflow-y: auto; padding: 10px 14px 18px; font-family: 'SFMono-Regular', Consolas, monospace; font-size: .72rem; line-height: 1.55; }
+
 
   /* ── Tabs ── */
   .tabs-wrapper { max-width: 480px; margin: 20px auto 0; padding: 0 16px; width: 100%; }
@@ -157,55 +171,6 @@
   }
   .tab-btn.active { background: linear-gradient(135deg, rgba(247,183,49,.15) 0%, rgba(253,150,68,.1) 100%); border-color: var(--accent1); color: var(--accent1); box-shadow: 0 0 0 2px rgba(247,183,49,.12); }
   .tab-btn:not(.active):hover { border-color: var(--muted); color: var(--text); }
-
-  /* ── Menu de módulos (cards) — atalho no canto superior direito ── */
-  #btnMenuCards {
-    position: absolute; top: 14px; right: 16px; z-index: 9560;
-    width: 38px; height: 38px; border-radius: 11px; border: 1.5px solid var(--border);
-    background: rgba(255,255,255,.04); cursor: pointer;
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px;
-    align-content: center; justify-content: center; padding: 8px;
-    transition: border-color .2s, background .2s;
-  }
-  #btnMenuCards span { width: 4px; height: 4px; border-radius: 50%; background: var(--muted); transition: background .2s; }
-  #btnMenuCards:hover { border-color: var(--accent1); background: rgba(247,183,49,.08); }
-  #btnMenuCards:hover span { background: var(--accent1); }
-  #btnMenuCards.open { border-color: var(--accent1); background: rgba(247,183,49,.12); }
-  #btnMenuCards.open span { background: var(--accent1); }
-
-  #cardMenuBackdrop {
-    position: fixed; inset: 0; background: rgba(6,9,16,.6); backdrop-filter: blur(2px);
-    z-index: 9640; opacity: 0; pointer-events: none; transition: opacity .25s;
-  }
-  #cardMenuBackdrop.show { opacity: 1; pointer-events: all; }
-
-  #cardMenuPanel {
-    position: fixed; top: 68px; right: 14px; left: 14px; margin: 0 auto; max-width: 460px;
-    max-height: calc(100vh - 88px); overflow-y: auto;
-    z-index: 9650; background: linear-gradient(160deg, #1a2133 0%, #0f1624 100%);
-    border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.55);
-    padding: 16px; opacity: 0; transform: translateY(-14px) scale(.97); pointer-events: none;
-    transition: opacity .22s ease, transform .22s ease;
-  }
-  #cardMenuPanel.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: all; }
-
-  .card-menu-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-  @media (max-width: 460px) { .card-menu-grid { grid-template-columns: repeat(2, 1fr); } }
-
-  #cardMenuPanel .menu-card {
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-    width: 100%; min-width: 0; background: rgba(255,255,255,.03); border: 1.5px solid var(--border);
-    border-radius: 16px; padding: 16px 8px; cursor: pointer; font-family: 'Exo 2', sans-serif;
-    color: var(--muted); font-size: .68rem; font-weight: 700; letter-spacing: .2px;
-    text-transform: uppercase; text-align: center; transition: all .2s;
-  }
-  #cardMenuPanel .menu-card-icon { font-size: 1.5rem; line-height: 1; }
-  #cardMenuPanel .menu-card:hover { border-color: var(--muted); color: var(--text); transform: translateY(-2px); }
-  #cardMenuPanel .menu-card.active {
-    border-color: var(--accent1); color: var(--accent1);
-    background: linear-gradient(135deg, rgba(247,183,49,.16) 0%, rgba(253,150,68,.08) 100%);
-    box-shadow: 0 0 0 1px rgba(247,183,49,.25), 0 8px 22px rgba(247,183,49,.18);
-  }
 
   .tab-panel { display: block; }
   .tab-panel.hidden { display: none; }
@@ -625,34 +590,33 @@
 <header id="main-header">
   <h1><span class="icon">&#x1F4BC;</span> Nova Folga Trabalhada <span style="color:var(--accent1)">FT</span></h1>
   <div id="currentTabLabel">&#x1F4CB; Nova FT</div>
-  <button type="button" id="btnMenuCards" title="Menu de módulos" aria-label="Abrir menu de módulos" aria-expanded="false" aria-controls="cardMenuPanel">
-    <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-  </button>
 </header>
 
-<div id="cardMenuBackdrop"></div>
-<div id="cardMenuPanel" role="menu" aria-label="Menu de módulos">
-  <div class="card-menu-grid">
-    <button type="button" class="tab-btn menu-card active" data-tab="tab-ft"><span class="menu-card-icon">&#x1F4CB;</span>Nova FT</button>
-    <button type="button" class="tab-btn menu-card" data-tab="tab-cadastros"><span class="menu-card-icon">&#x1F5C2;&#xFE0F;</span>Cadastros</button>
-    <button type="button" class="tab-btn menu-card" data-tab="tab-dashboard"><span class="menu-card-icon">&#x1F4CA;</span>Dashboard</button>
-    <button type="button" class="tab-btn menu-card" data-tab="tab-geral"><span class="menu-card-icon">&#x1F30D;</span>Geral</button>
-    <button type="button" class="tab-btn menu-card" data-tab="tab-historico"><span class="menu-card-icon">&#x1F4DC;</span>Histórico</button>
-    <button type="button" class="tab-btn menu-card" data-tab="tab-bico"><span class="menu-card-icon">&#x1F4A0;</span>Bico Fixo</button>
-    <button type="button" class="tab-btn menu-card" data-tab="tab-pagamentos"><span class="menu-card-icon">&#x1F4B3;</span>Pagamentos</button>
-    <button type="button" class="tab-btn menu-card" data-tab="tab-alertas"><span class="menu-card-icon">&#x1F514;</span>Alertas</button>
+<button type="button" id="railToggle" title="Abrir/fechar menu" aria-label="Abrir/fechar menu" aria-expanded="false">&#x2630;</button>
+<nav id="railMenu" aria-label="Menu de módulos">
+  <div class="rail-items">
+    <button type="button" class="tab-btn rail-item active" data-tab="tab-ft"><span class="rail-icon">&#x1F4CB;</span><span class="rail-label">Nova FT</span></button>
+    <button type="button" class="tab-btn rail-item" data-tab="tab-cadastros"><span class="rail-icon">&#x1F5C2;&#xFE0F;</span><span class="rail-label">Cadastros</span></button>
+    <button type="button" class="tab-btn rail-item" data-tab="tab-dashboard"><span class="rail-icon">&#x1F4CA;</span><span class="rail-label">Dashboard</span></button>
+    <button type="button" class="tab-btn rail-item" data-tab="tab-geral"><span class="rail-icon">&#x1F30D;</span><span class="rail-label">Geral</span></button>
+    <button type="button" class="tab-btn rail-item" data-tab="tab-historico"><span class="rail-icon">&#x1F4DC;</span><span class="rail-label">Histórico</span></button>
+    <button type="button" class="tab-btn rail-item" data-tab="tab-bico"><span class="rail-icon">&#x1F4A0;</span><span class="rail-label">Bico Fixo</span></button>
+    <button type="button" class="tab-btn rail-item" data-tab="tab-pagamentos"><span class="rail-icon">&#x1F4B3;</span><span class="rail-label">Pagamentos</span></button>
+    <button type="button" class="tab-btn rail-item" data-tab="tab-alertas"><span class="rail-icon">&#x1F514;</span><span class="rail-label">Alertas</span></button>
   </div>
 
-  <div class="drawer-handle-label">Opções</div>
-  <div id="header-badges">
-    <button class="btn-novo-ciclo" id="btnNovoCiclo">&#x1F504; Novo Ciclo</button>
-    <button class="btn-novo-ciclo" id="btnAbrirAlertas" style="background:rgba(69,170,242,.15);border-color:rgba(69,170,242,.5);color:var(--accent3);">&#x2699;&#xFE0F; Alertas</button>
-    <div class="badge-auto">&#x1F4BE; Offline-first</div>
-    <span id="sync-status" class="online" title="Status da conexão"><span class="dot"></span><span id="sync-label">Online</span></span>
-    <span id="pending-badge" title="Toque para ver por que estas operações não sincronizaram"><span>&#x23F3; <span id="pending-count">0</span> pendente(s)</span></span>
-    <span id="diag-sync-btn" title="Abrir diagnóstico de sincronização">&#x1F527; Diagnóstico</span>
+  <div class="rail-divider"></div>
+
+  <div class="rail-items" id="header-badges">
+    <button type="button" class="rail-item" id="btnNovoCiclo"><span class="rail-icon">&#x1F504;</span><span class="rail-label">Novo Ciclo</span></button>
+    <button type="button" class="rail-item" id="btnAbrirAlertas"><span class="rail-icon">&#x2699;&#xFE0F;</span><span class="rail-label">Alertas</span></button>
+    <div class="rail-item" id="sync-status"><span class="rail-icon dot"></span><span class="rail-label" id="sync-label">Online</span></div>
+    <div class="rail-item" id="pending-badge" title="Toque para ver por que estas operações não sincronizaram"><span class="rail-icon">&#x23F3;</span><span class="rail-label"><span id="pending-count">0</span> pendente(s)</span></div>
+    <div class="rail-item" id="diag-sync-btn" title="Abrir diagnóstico de sincronização"><span class="rail-icon">&#x1F527;</span><span class="rail-label">Diagnóstico</span></div>
+    <div class="rail-item badge-auto"><span class="rail-icon">&#x1F4BE;</span><span class="rail-label">Offline-first</span></div>
   </div>
-</div>
+</nav>
+<div id="railBackdrop"></div>
 
 <div id="diag-sync-panel">
   <div class="diag-head"><strong>&#x1F527; Diagnóstico de Sincronização</strong><span class="diag-close" id="diagClose">Fechar</span></div>
@@ -660,6 +624,7 @@
 </div>
 
 <div class="tabs-wrapper">
+
 
   <!-- ABA: NOVA FT -->
   <div class="tab-panel" id="tab-ft">
@@ -1695,42 +1660,36 @@ window.FT_ensureLib = function (checkFn, sources, onReady, onFail) {
 }());
 
 /* ════════════════════════════════════════════════════════════
-   MÓDULO 4B — MENU DE MÓDULOS (cards, atalho superior direito)
+   MÓDULO 4B — MENU LATERAL (rail: ícones ↔ expandido com rótulos)
    ════════════════════════════════════════════════════════════ */
 (function () {
-  var btn = document.getElementById('btnMenuCards');
-  var panel = document.getElementById('cardMenuPanel');
-  var backdrop = document.getElementById('cardMenuBackdrop');
-  if (!btn || !panel || !backdrop) return;
+  var rail = document.getElementById('railMenu');
+  var toggle = document.getElementById('railToggle');
+  var backdrop = document.getElementById('railBackdrop');
+  if (!rail || !toggle || !backdrop) return;
 
-  function openMenu() {
-    panel.classList.add('open');
+  function openRail() {
+    rail.classList.add('expanded');
     backdrop.classList.add('show');
-    btn.classList.add('open');
-    btn.setAttribute('aria-expanded', 'true');
+    toggle.classList.add('open');
+    toggle.setAttribute('aria-expanded', 'true');
   }
-  function closeMenu() {
-    panel.classList.remove('open');
+  function closeRail() {
+    rail.classList.remove('expanded');
     backdrop.classList.remove('show');
-    btn.classList.remove('open');
-    btn.setAttribute('aria-expanded', 'false');
+    toggle.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
   }
-  btn.addEventListener('click', function (e) {
+  toggle.addEventListener('click', function (e) {
     e.stopPropagation();
-    if (panel.classList.contains('open')) closeMenu(); else openMenu();
+    if (rail.classList.contains('expanded')) closeRail(); else openRail();
   });
-  backdrop.addEventListener('click', closeMenu);
-  panel.querySelectorAll('.menu-card').forEach(function (card) {
-    card.addEventListener('click', closeMenu);
+  backdrop.addEventListener('click', closeRail);
+  rail.querySelectorAll('.rail-item').forEach(function (item) {
+    item.addEventListener('click', closeRail);
   });
-  var opcoes = document.getElementById('header-badges');
-  if (opcoes) {
-    opcoes.addEventListener('click', function (e) {
-      if (e.target.closest('button, span')) closeMenu();
-    });
-  }
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeMenu();
+    if (e.key === 'Escape') closeRail();
   });
 }());
 
@@ -1864,6 +1823,91 @@ var CadastrosModule = (function () {
     if (key === LS_COLAB) { colaboradores = value || []; renderColaboradoresList(); refreshFTSelects(); }
     if (key === LS_POSTOS) { postos = value || []; renderPostosList(); refreshFTSelects(); }
   };
+
+  // Pré-carrega os postos padrão (a partir dos nomes já usados na operação),
+  // sem duplicar quem já estiver cadastrado.
+  function seedPostosPadrao() {
+    var nomesPadrao = [
+      'Aeroclube', 'Água Parada', 'Aki Tem Choperia', 'Almada', 'Alvorada', 'Amera',
+      'André Rossi', 'APAE Mogi Mirim', 'Barros', 'Borboletas', 'Calunga', 'Colina',
+      'Construvenda', 'CRK Baseio', 'Davoli', 'Elevatória 2', 'Elevatória Parque laranjeiras',
+      'Espaço Bela Vista', 'Feirão Big Bom', 'Gaplan Caminhões', 'Garden', 'Globalvet',
+      'Good Stop', 'Hadassas', 'HFM Transportes e Logística', 'Hotel Bristol', 'Icobit Brasil',
+      'Jaguary', 'Kodyve', 'La Vita Alimentos', 'Marangoni', 'Milfarma', 'Morro Vermelho 1',
+      'Morro Vermelho 2', 'Obra Milfarma', 'Oregon', 'Padrão de Energia', 'Paineiras',
+      'Pantanal', 'Placa Solar Sobradinho', 'Plazza Ville', 'Premium Ambiental', 'Pura linha',
+      'Q Óculos', 'Rancho Alegre', 'Reserva Central', 'Reserva de Jaguariúna', 'Reserva do Lago',
+      'San Remo', 'Santa Mônica', 'Smalticeram Unicer do Brasil', 'SMC Av dos trabalhadores',
+      'Spasso Sabores Jaguariúna Loja grande', 'Ubs Ypê Amarelo', 'Vale Verde', 'Veneto',
+      'VRV Miami', 'W Park', 'Zinias'
+    ];
+    var existentes = {};
+    postos.forEach(function (p) { existentes[p.nome.toLowerCase()] = true; });
+    var alterou = false;
+    nomesPadrao.forEach(function (nome) {
+      var chave = nome.toLowerCase();
+      if (!existentes[chave]) {
+        postos.push({ id: gerarId(), nome: nome });
+        existentes[chave] = true;
+        alterou = true;
+      }
+    });
+    if (alterou) saveStorage(LS_POSTOS, postos);
+  }
+  seedPostosPadrao();
+
+  // Pré-carrega os colaboradores padrão, sem duplicar quem já estiver cadastrado.
+  function seedColaboradoresPadrao() {
+    var nomesPadrao = [
+      'Adilson dos Santos', 'Adonias Camargo', 'Alessandro Jardim', 'Alex Alexandre Maia',
+      'Alexandre da Silva Pereira', 'Anderson dos Santos Querido', 'Anderson Silva Sousa',
+      'André Aparecido Batista Medeiros', 'André Vicente Pereira Grossi', 'Aristeia Porto',
+      'Bruno Soares', 'Bruno William dos Reis', 'Carlos Alberto Delastore', 'Carlos Lopes',
+      'Christian', 'Cleber Silvio de Carvalho', 'Clóvis Davoli', 'Cristiano Dias Pedro',
+      'Crodoaldo Pedroso de Moraes', 'Daiana Aparecida Emídio Lopes', 'Daniel Mariano',
+      'David Lopes Amazonas', 'Dejanira Barbosa', 'Denilson Faustino', 'Diego Silvério',
+      'Diones Rodrigo Fernandes', 'Ed Carlos Coelho Barbosa', 'Eder Fraleoni', 'Edson Rogério',
+      'Eduarda Silva Alves', 'Edvaldo Coelho', 'Edvilson Carolino de Freitas',
+      'Evelyn da Silva Ragassi de Almeida', 'Everaldo Barbosa',
+      'Everton Aparecido Barbosa Ezequiel', 'Ezequiel Pereira', 'Fabrício Richter dos Santos',
+      'Felipe Maximo dos Reis', 'Fernando da Silva', 'Francisco Clayton',
+      'Francisco Nunes da Conceição', 'Gian Carvalho', 'Gilson Mendonça', 'Gleidson Muniz',
+      'Guiomar Gonçalves', 'Gustavo Ferreira Santos', 'Gustavo Putini', 'Isabeli dos Reis',
+      'Isabelly Barbosa', 'Ismael Mariano', 'Israel', 'Jairo Morães', 'Jean Tarcísio Amgarten',
+      'Jenifer Alice', 'Jeymisson', 'Jhenyfer Lorrane dos reis', 'Joanito Gomes Soares',
+      'João Cera', 'Jonata Willian', 'José Carlos Germano Junior', 'José Errera',
+      'José Francisco Delfino Neto', 'José Henrique da Silva', 'José Lucas Nunes Rodrigues',
+      'José Sampaio', 'Karoline Ricci Pochinelli', 'Laércio Vicente da Silva',
+      'Leandro de Araújo', 'Leonan Henrique de Carvalho', 'Leonardo de Oliveira', 'Luan Ligabo',
+      'Luana Mariana Garcia', 'Luiz Cláudio dos Santos', 'Luiz Felipe Pelegrino',
+      'Luiz Ferreira Henrique da Silva', 'Marcelo Barbosa de Castro', 'Márcia Santos',
+      'Marcílio Rosa', 'Marcio Cesar Celestino', 'Marco Antônio Lino',
+      'Mario Santa Rosa Júnior', 'Mateus Henrique Jardim', 'Matheus Barbosa Salvador',
+      'Miquéias fraleoni', 'Nilva Bassi', 'Patrícia Felício', 'Paulo de Andrade Filho',
+      'Paulo Natanael', 'Paulo Pedro Jardim', 'Paulo Reis', 'Paulo Roberto Polato',
+      'Paulo Rocha', 'Paulo Vitor', 'Rafael Poyares', 'Rafaela Aparecida Pereira Lopes',
+      'Raphael de Souza Franco', 'Raul Eduardo dos Santos', 'Roberto Costa Silva',
+      'Roberto Santos Oliveira', 'Rodrigo Alves', 'Ronaldo Aparecido Leite da Silva Candido',
+      'Ronaldo Ferreira de Paula', 'Ruan Vitor Silva Américo', 'Sandra Maria do Nascimento Silva',
+      'Valdir Gilo', 'Vanderson Garcia', 'Verônica Barbosa de Souza',
+      'Victor Augusto Porto Pessini', 'Vitor William dos Reis', 'Vladmeire Pires',
+      'Wannady Wesley Bonfim', 'Wellington Eaquim', 'Wellington Henrique de Freitas',
+      'Wellington Leal', 'Wilquias Antônio Valentin', 'Yuri Marques', 'Yuri Pereira Gonçalves'
+    ];
+    var existentes = {};
+    colaboradores.forEach(function (c) { existentes[c.nome.toLowerCase()] = true; });
+    var alterou = false;
+    nomesPadrao.forEach(function (nome) {
+      var chave = nome.toLowerCase();
+      if (!existentes[chave]) {
+        colaboradores.push({ id: gerarId(), nome: nome });
+        existentes[chave] = true;
+        alterou = true;
+      }
+    });
+    if (alterou) saveStorage(LS_COLAB, colaboradores);
+  }
+  seedColaboradoresPadrao();
 
   renderColaboradoresList();
   renderPostosList();
