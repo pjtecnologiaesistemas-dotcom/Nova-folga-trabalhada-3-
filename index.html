@@ -769,6 +769,11 @@
         <option value="30d">Últimos 30 dias</option>
         <option value="todos">Todos os períodos</option>
       </select>
+      <select id="dashTipo">
+        <option value="todos">&#x1F4CA; Geral (Bico Fixo + Pontual)</option>
+        <option value="bico">&#x1F4A0; Só Bico Fixo</option>
+        <option value="pontual">&#x1F4CC; Só FT Pontual</option>
+      </select>
     </div>
 
     <div class="dash-stats-grid">
@@ -787,6 +792,24 @@
       <div class="dash-stat-card">
         <div class="dash-stat-value col-orange" id="dashPostosAtivos">0</div>
         <div class="dash-stat-label">Postos com FT</div>
+      </div>
+    </div>
+
+    <div class="cadastro-section" id="dashBicoCompararWrap">
+      <h2 class="col-purple">&#x1F4A0; Bico Fixo — Projetado vs. Lançado</h2>
+      <div class="dash-stats-grid">
+        <div class="dash-stat-card">
+          <div class="dash-stat-value col-purple" id="dashBicoProjetado">R$ 0,00</div>
+          <div class="dash-stat-label">Projetado (pela recorrência)</div>
+        </div>
+        <div class="dash-stat-card">
+          <div class="dash-stat-value col-green" id="dashBicoLancado">R$ 0,00</div>
+          <div class="dash-stat-label">Lançado (FTs de fato)</div>
+        </div>
+        <div class="dash-stat-card">
+          <div class="dash-stat-value col-orange" id="dashBicoDiferenca">R$ 0,00</div>
+          <div class="dash-stat-label">Diferença (a lançar)</div>
+        </div>
       </div>
     </div>
 
@@ -2326,6 +2349,62 @@ document.getElementById('btnNovoCiclo').addEventListener('click', function () {
     document.getElementById('dashPostosAtivos').textContent = Object.keys(postosAtivos).length;
   }
 
+  function getBicos() {
+    try { return JSON.parse(localStorage.getItem('ft_bico_fixo') || '[]'); } catch (e) { return []; }
+  }
+
+  var DIA_ORDEM_IDX = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB']; // igual Date#getDay()
+
+  function ymdParaDataLocal(str) {
+    if (!str) return null;
+    var p = String(str).split('-');
+    if (p.length !== 3) return null;
+    return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+  }
+
+  // ── Limites de data por período, no mesmo padrão usado na aba Bico Fixo ──
+  function limitesPeriodoBico(periodo) {
+    var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    var inicio;
+    if (periodo === 'mes') { inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1); }
+    else if (periodo === '7d') { inicio = new Date(hoje); inicio.setDate(inicio.getDate() - 6); }
+    else if (periodo === '30d') { inicio = new Date(hoje); inicio.setDate(inicio.getDate() - 29); }
+    else { inicio = null; }
+    return { inicio: inicio, fim: hoje };
+  }
+
+  function contarOcorrenciasBico(bico, periodo) {
+    var lim = limitesPeriodoBico(periodo);
+    var inicioBico = ymdParaDataLocal(bico.dataInicio);
+    var cursor = inicioBico && (!lim.inicio || inicioBico > lim.inicio) ? inicioBico : lim.inicio;
+    if (!cursor) cursor = inicioBico;
+    if (!cursor || cursor > lim.fim) return 0;
+    var dias = bico.dias || [];
+    if (!dias.length) return 0;
+    var count = 0;
+    var d = new Date(cursor);
+    while (d <= lim.fim) {
+      if (dias.indexOf(DIA_ORDEM_IDX[d.getDay()]) !== -1) count++;
+      d.setDate(d.getDate() + 1);
+    }
+    return count;
+  }
+
+  function valorProjetadoBicos(periodo) {
+    return getBicos().filter(function (b) { return b.ativo; })
+      .reduce(function (acc, b) { return acc + (parseFloat(b.valor) || 0) * contarOcorrenciasBico(b, periodo); }, 0);
+  }
+
+  function renderComparativoBico(listaCompleta, periodo) {
+    var projetado = valorProjetadoBicos(periodo);
+    var lancado = listaCompleta.filter(function (ft) { return (ft.motivo || '').trim() === 'Bico Fixo'; })
+      .reduce(function (acc, ft) { return acc + (parseFloat(ft.valor) || 0); }, 0);
+    var diferenca = projetado - lancado;
+    document.getElementById('dashBicoProjetado').textContent = fmtMoeda(projetado);
+    document.getElementById('dashBicoLancado').textContent = fmtMoeda(lancado);
+    document.getElementById('dashBicoDiferenca').textContent = fmtMoeda(diferenca < 0 ? 0 : diferenca);
+  }
+
   function renderPorMotivo(lista) {
     var el = document.getElementById('dashPorMotivo');
     var grupos = agrupar(lista, 'motivo');
@@ -2353,16 +2432,26 @@ document.getElementById('btnNovoCiclo').addEventListener('click', function () {
     }).join('');
   }
 
+  function filtrarPorTipo(lista, tipo) {
+    if (tipo === 'bico') return lista.filter(function (ft) { return (ft.motivo || '').trim() === 'Bico Fixo'; });
+    if (tipo === 'pontual') return lista.filter(function (ft) { return (ft.motivo || '').trim() !== 'Bico Fixo'; });
+    return lista;
+  }
+
   function refresh() {
     var periodo = document.getElementById('dashPeriodo').value;
-    var lista = filtrarPorPeriodo(getRegistros(), periodo);
+    var tipo = document.getElementById('dashTipo').value;
+    var listaPeriodo = filtrarPorPeriodo(getRegistros(), periodo);
+    var lista = filtrarPorTipo(listaPeriodo, tipo);
     renderStats(lista);
     renderPorMotivo(lista);
     renderRanking('dashTopPostos', lista, 'posto', 'Sem registros no período.');
     renderRanking('dashTopColab', lista, 'substituto', 'Sem registros no período.');
+    renderComparativoBico(listaPeriodo, periodo);
   }
 
   document.getElementById('dashPeriodo').addEventListener('change', refresh);
+  document.getElementById('dashTipo').addEventListener('change', refresh);
 
   // Encadeia com o hook de troca de aba (Módulo 4) sem sobrescrever outros módulos
   var prevTabShow = window.FT_onTabShow;
