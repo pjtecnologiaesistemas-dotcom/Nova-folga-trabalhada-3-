@@ -4172,7 +4172,7 @@ var AlertasModule = (function () {
 
           // ── Turno Dia ──
           if (p.ativoDia && config.diaAtivo) {
-            var entradaDia = p.escalaDia[diaRefKey] || DEFAULT_ENTRADA_DIA;
+            var entradaDia = p.escalaDia[diaRefKey];
             var jaPassouDia = ehHoje ? (horaHoje >= somarMinutosHorario(entradaDia, TOLERANCIA_ALERTA_MIN)) : true;
             if (entradaDia && jaPassouDia) {
               var chaveDia = p.id + '_dia_' + dataRefStr;
@@ -4190,7 +4190,7 @@ var AlertasModule = (function () {
 
           // ── Turno Noite ──
           if (p.ativoNoite && config.noiteAtivo) {
-            var entradaNoite = p.escalaNoite[diaRefKey] || DEFAULT_ENTRADA_NOITE;
+            var entradaNoite = p.escalaNoite[diaRefKey];
             var jaPassouNoite = ehHoje ? (horaHoje >= somarMinutosHorario(entradaNoite, TOLERANCIA_ALERTA_MIN)) : true;
             if (entradaNoite && jaPassouNoite) {
               var chaveNoite = p.id + '_noite_' + dataRefStr;
