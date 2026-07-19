@@ -1127,15 +1127,31 @@
       <div class="field-label col-amber"><span class="dot bg-amber"></span>&#x2600;&#xFE0F; Entrada — Turno Dia</div>
       <div id="escalaCamposDia"></div>
     </div>
+    <div class="btn-row">
+      <button type="button" class="btn btn-clear" id="btnAplicarTodosDia" style="flex:1;">Copiar Entrada Dia p/ todos</button>
+    </div>
     <div class="field">
-      <div class="field-label col-blue"><span class="dot bg-blue"></span>&#x1F319; Entrada/Rendição — Turno Noite</div>
+      <div class="field-label col-amber"><span class="dot bg-amber"></span>&#x2600;&#xFE0F; Saída — Turno Dia</div>
+      <div id="escalaCamposDiaFim"></div>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn btn-clear" id="btnAplicarTodosDiaFim" style="flex:1;">Copiar Saída Dia p/ todos</button>
+    </div>
+    <div class="field">
+      <div class="field-label col-blue"><span class="dot bg-blue"></span>&#x1F319; Entrada — Turno Noite</div>
       <div id="escalaCamposNoite"></div>
     </div>
-    <p style="font-size:.72rem;color:var(--muted);margin:-6px 0 14px;">Dica: se todos os dias têm o mesmo horário, preencha só a Segunda e toque em "Aplicar a todos".</p>
     <div class="btn-row">
-      <button type="button" class="btn btn-clear" id="btnAplicarTodosDia" style="flex:1;">Copiar Dia p/ todos</button>
-      <button type="button" class="btn btn-clear" id="btnAplicarTodosNoite" style="flex:1;">Copiar Noite p/ todos</button>
+      <button type="button" class="btn btn-clear" id="btnAplicarTodosNoite" style="flex:1;">Copiar Entrada Noite p/ todos</button>
     </div>
+    <div class="field">
+      <div class="field-label col-blue"><span class="dot bg-blue"></span>&#x1F319; Saída/Rendição — Turno Noite</div>
+      <div id="escalaCamposNoiteFim"></div>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn btn-clear" id="btnAplicarTodosNoiteFim" style="flex:1;">Copiar Saída Noite p/ todos</button>
+    </div>
+    <p style="font-size:.72rem;color:var(--muted);margin:-6px 0 14px;">Dica: se todos os dias têm o mesmo horário, preencha só a Segunda e toque em "Aplicar a todos" da seção correspondente.</p>
     <div class="btn-row">
       <button type="button" class="btn btn-clear" id="btnFecharModalEscala">&#x2715; Fechar</button>
       <button type="button" class="btn btn-submit" id="btnSalvarEscala">&#x1F4BE; Salvar Escala</button>
@@ -3849,9 +3865,13 @@ var AlertasModule = (function () {
   function garantirEstrutura(p) {
     p.escalaDia = p.escalaDia || novaEscalaVazia();
     p.escalaNoite = p.escalaNoite || novaEscalaVazia();
+    p.escalaDiaFim = p.escalaDiaFim || novaEscalaVazia();
+    p.escalaNoiteFim = p.escalaNoiteFim || novaEscalaVazia();
     DIA_ORDEM.forEach(function (d) {
       if (!p.escalaDia[d]) p.escalaDia[d] = '';
       if (!p.escalaNoite[d]) p.escalaNoite[d] = '';
+      if (!p.escalaDiaFim[d]) p.escalaDiaFim[d] = '';
+      if (!p.escalaNoiteFim[d]) p.escalaNoiteFim[d] = '';
     });
     if (typeof p.ativoDia !== 'boolean') p.ativoDia = true;
     if (typeof p.ativoNoite !== 'boolean') p.ativoNoite = true;
@@ -3862,10 +3882,12 @@ var AlertasModule = (function () {
   postosMonitorados.forEach(garantirEstrutura);
 
   // ── Agrupa dias consecutivos com o mesmo horário (estilo "Seg–Qui 17h, Sex 16h") ──
-  function agruparEscala(escala) {
+  function agruparEscala(escala, escalaFim) {
     var grupos = [];
     DIA_ORDEM.forEach(function (dia) {
-      var valor = escala[dia] || '—';
+      var entrada = escala[dia] || '';
+      var saida = (escalaFim && escalaFim[dia]) || '';
+      var valor = entrada ? (entrada + (saida ? '→' + saida : '')) : '—';
       var ultimo = grupos[grupos.length - 1];
       if (ultimo && ultimo.valor === valor) { ultimo.dias.push(dia); }
       else { grupos.push({ valor: valor, dias: [dia] }); }
@@ -3882,8 +3904,8 @@ var AlertasModule = (function () {
     if (!ativos.length) { el.innerHTML = '<span class="info-posto-linha">Nenhum posto monitorado ainda.</span>'; return; }
     el.innerHTML = ativos.map(function (p) {
       var partes = [];
-      if (p.ativoDia) partes.push('Dia: ' + agruparEscala(p.escalaDia));
-      if (p.ativoNoite) partes.push('Noite: ' + agruparEscala(p.escalaNoite));
+      if (p.ativoDia) partes.push('Dia: ' + agruparEscala(p.escalaDia, p.escalaDiaFim));
+      if (p.ativoNoite) partes.push('Noite: ' + agruparEscala(p.escalaNoite, p.escalaNoiteFim));
       var regraTxt = p.regra === 'par' ? ' · FT apenas em dias pares' : p.regra === 'impar' ? ' · FT apenas em dias ímpares' : '';
       return '<div class="info-posto-linha">&#x1F4CD; <strong>' + escHtml(p.nome) + '</strong>: ' + (partes.join(' / ') || 'sem escala definida') + regraTxt + '</div>';
     }).join('');
@@ -3999,7 +4021,9 @@ var AlertasModule = (function () {
     editandoEscalaId = id;
     document.getElementById('modalEscalaTitulo').textContent = '🕐 Escala — ' + p.nome;
     renderCamposEscala('escalaCamposDia', p.escalaDia);
+    renderCamposEscala('escalaCamposDiaFim', p.escalaDiaFim);
     renderCamposEscala('escalaCamposNoite', p.escalaNoite);
+    renderCamposEscala('escalaCamposNoiteFim', p.escalaNoiteFim);
     document.getElementById('modalEscala').classList.add('show');
   }
   function fecharModalEscala() { document.getElementById('modalEscala').classList.remove('show'); editandoEscalaId = null; }
@@ -4012,20 +4036,22 @@ var AlertasModule = (function () {
   document.getElementById('btnFecharModalEscala').addEventListener('click', fecharModalEscala);
   document.getElementById('modalEscala').addEventListener('click', function (e) { if (e.target === this) fecharModalEscala(); });
 
-  document.getElementById('btnAplicarTodosDia').addEventListener('click', function () {
-    var primeiro = document.querySelector('#escalaCamposDia input[data-dia="SEG"]').value;
-    document.querySelectorAll('#escalaCamposDia input').forEach(function (inp) { inp.value = primeiro; });
-  });
-  document.getElementById('btnAplicarTodosNoite').addEventListener('click', function () {
-    var primeiro = document.querySelector('#escalaCamposNoite input[data-dia="SEG"]').value;
-    document.querySelectorAll('#escalaCamposNoite input').forEach(function (inp) { inp.value = primeiro; });
-  });
+  function aplicarTodos(containerId) {
+    var primeiro = document.querySelector('#' + containerId + ' input[data-dia="SEG"]').value;
+    document.querySelectorAll('#' + containerId + ' input').forEach(function (inp) { inp.value = primeiro; });
+  }
+  document.getElementById('btnAplicarTodosDia').addEventListener('click', function () { aplicarTodos('escalaCamposDia'); });
+  document.getElementById('btnAplicarTodosDiaFim').addEventListener('click', function () { aplicarTodos('escalaCamposDiaFim'); });
+  document.getElementById('btnAplicarTodosNoite').addEventListener('click', function () { aplicarTodos('escalaCamposNoite'); });
+  document.getElementById('btnAplicarTodosNoiteFim').addEventListener('click', function () { aplicarTodos('escalaCamposNoiteFim'); });
 
   document.getElementById('btnSalvarEscala').addEventListener('click', function () {
     var p = encontrarPosto(editandoEscalaId);
     if (!p) return;
     document.querySelectorAll('#escalaCamposDia input').forEach(function (inp) { p.escalaDia[inp.dataset.dia] = inp.value || ''; });
+    document.querySelectorAll('#escalaCamposDiaFim input').forEach(function (inp) { p.escalaDiaFim[inp.dataset.dia] = inp.value || ''; });
     document.querySelectorAll('#escalaCamposNoite input').forEach(function (inp) { p.escalaNoite[inp.dataset.dia] = inp.value || ''; });
+    document.querySelectorAll('#escalaCamposNoiteFim input').forEach(function (inp) { p.escalaNoiteFim[inp.dataset.dia] = inp.value || ''; });
     savePostos();
     renderInfoBox();
     fecharModalEscala();
@@ -4178,7 +4204,7 @@ var AlertasModule = (function () {
               var chaveDia = p.id + '_dia_' + dataRefStr;
               if (forcarIgnorarCiente || !estaCienteOuAdiado(chaveDia, agoraRef)) {
                 if (!existeFT(p.nome, 'dia', dataRefStr)) {
-                  var fimDia = (p.ativoNoite && p.escalaNoite[diaRefKey]) ? p.escalaNoite[diaRefKey] : DEFAULT_ENTRADA_NOITE;
+                  var fimDia = p.escalaDiaFim[diaRefKey] || ((p.ativoNoite && p.escalaNoite[diaRefKey]) ? p.escalaNoite[diaRefKey] : DEFAULT_ENTRADA_NOITE);
                   resultado.dia.push({
                     id: p.id, chave: chaveDia, nome: p.nome, periodo: 'dia',
                     inicio: entradaDia, fim: fimDia, cruzaMeiaNoite: false, refData: dataRefStr
@@ -4196,7 +4222,7 @@ var AlertasModule = (function () {
               var chaveNoite = p.id + '_noite_' + dataRefStr;
               if (forcarIgnorarCiente || !estaCienteOuAdiado(chaveNoite, agoraRef)) {
                 if (!existeFT(p.nome, 'noite', dataRefStr)) {
-                  var fimNoite = (p.ativoDia && p.escalaDia[diaSeguinteKey]) ? p.escalaDia[diaSeguinteKey] : DEFAULT_ENTRADA_DIA;
+                  var fimNoite = p.escalaNoiteFim[diaRefKey] || ((p.ativoDia && p.escalaDia[diaSeguinteKey]) ? p.escalaDia[diaSeguinteKey] : DEFAULT_ENTRADA_DIA);
                   resultado.noite.push({
                     id: p.id, chave: chaveNoite, nome: p.nome, periodo: 'noite',
                     inicio: entradaNoite, fim: fimNoite, cruzaMeiaNoite: true, refData: dataRefStr
