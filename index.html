@@ -1336,6 +1336,87 @@
 
 <script>
 /* ════════════════════════════════════════════════════════════
+   MÓDULO -1 — TOMBSTONES (registro de exclusões, pra sincronizar
+   remoções entre dispositivos sem que elas "ressuscitem" quando
+   um merge por id une listas de aparelhos diferentes)
+   ════════════════════════════════════════════════════════════ */
+window.FT_Tombstones = (function () {
+  'use strict';
+  var LS_KEY = 'ft_tombstones';
+  var DIAS_RETENCAO = 180; // tombstones mais velhos que isso são descartados (já devem ter propagado a todo mundo)
+
+  function obterTodos() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch (e) { return {}; }
+  }
+
+  function salvarTodos(obj) {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(obj)); } catch (e) {}
+    if (window.FT_SyncQueue) {
+      FT_SyncQueue.enqueue('set', '_tombstones', obj).then(function () {
+        if (window.SyncEngine) SyncEngine.flush();
+      });
+    }
+  }
+
+  // ── Chamar isso em todo "excluir" antes/depois de tirar o item da lista ──
+  function registrar(store, id) {
+    var todos = obterTodos();
+    if (!todos[store]) todos[store] = [];
+    todos[store] = todos[store].filter(function (t) { return t.id !== id; });
+    todos[store].push({ id: id, deletedAt: new Date().toISOString() });
+    salvarTodos(podar(todos));
+  }
+
+  function podar(todos) {
+    var limite = new Date(Date.now() - DIAS_RETENCAO * 86400000).toISOString();
+    Object.keys(todos).forEach(function (store) {
+      todos[store] = (todos[store] || []).filter(function (t) { return t.deletedAt >= limite; });
+    });
+    return todos;
+  }
+
+  // ── Une dois objetos de tombstones (ex: local + vindo do Firestore),
+  //    mantendo, por id, o deletedAt mais recente. ──
+  function mesclar(a, b) {
+    a = a || {}; b = b || {};
+    var stores = {};
+    Object.keys(a).forEach(function (s) { stores[s] = true; });
+    Object.keys(b).forEach(function (s) { stores[s] = true; });
+    var resultado = {};
+    Object.keys(stores).forEach(function (store) {
+      var porId = {};
+      (a[store] || []).forEach(function (t) { porId[t.id] = t; });
+      (b[store] || []).forEach(function (t) {
+        var atual = porId[t.id];
+        if (!atual || t.deletedAt > atual.deletedAt) porId[t.id] = t;
+      });
+      resultado[store] = Object.keys(porId).map(function (id) { return porId[id]; });
+    });
+    return podar(resultado);
+  }
+
+  // ── Remove de "lista" qualquer item cujo id esteja marcado como excluído,
+  //    a menos que o próprio item tenha sido recriado depois da exclusão
+  //    (timestamp do item mais novo que o deletedAt do tombstone). ──
+  function filtrar(store, lista) {
+    var todos = obterTodos();
+    var tombs = todos[store] || [];
+    if (!tombs.length || !Array.isArray(lista)) return lista;
+    var deletedMap = {};
+    tombs.forEach(function (t) { deletedMap[t.id] = t.deletedAt; });
+    return lista.filter(function (item) {
+      if (!item || deletedMap[item.id] === undefined) return true;
+      var tsItem = (item.atualizadoEm || item.criadoEm) || '';
+      return tsItem > deletedMap[item.id];
+    });
+  }
+
+  return { registrar: registrar, obterTodos: obterTodos, salvarTodos: salvarTodos, mesclar: mesclar, filtrar: filtrar };
+}());
+</script>
+
+<script>
+/* ════════════════════════════════════════════════════════════
    MÓDULO 0 — CONFIGURAÇÃO INICIAL (credenciais do banco de dados)
    Exibe uma tela obrigatória na primeira vez que o sistema abre
    neste aparelho, pedindo as credenciais do Firebase. Só libera
@@ -1348,6 +1429,7 @@
   var CAMPOS = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
   var DATA_KEYS = ['ft_colaboradores', 'ft_postos', 'ft_registros', 'ft_bico_fixo', 'ft_horarios_custom', 'bico_horarios_custom', 'ft_alertas_ciente', 'ft_alertas_config', 'ft_alertas_postos_v2'];
   window.FT_DATA_KEYS = DATA_KEYS; // reutilizado pelo motor de sync (Firebase) para saber quais chaves espelhar entre aparelhos
+
 
   function getConfig() {
     try { return JSON.parse(localStorage.getItem(CONFIG_KEY) || 'null'); } catch (e) { return null; }
@@ -1703,6 +1785,28 @@
   var listenerRetryMs = 4000;
   var MAX_RETRY_MS = 30000;
 
+  // ── Faz merge por "id" entre duas listas — nunca perde item que só existe
+  //    em uma delas (ex: registro adicionado por outro dispositivo enquanto
+  //    este ainda não tinha sincronizado). Em empate de id, fica o mais
+  //    recente (criadoEm/atualizadoEm), com o segundo argumento como desempate. ──
+  function timestampDoItem(it) {
+    return (it && (it.atualizadoEm || it.criadoEm)) || '';
+  }
+  function mergeListasPorId(listaA, listaB) {
+    if (!Array.isArray(listaA)) listaA = [];
+    if (!Array.isArray(listaB)) listaB = [];
+    var semId = !listaA.every(function (it) { return it && it.id; }) ||
+                !listaB.every(function (it) { return it && it.id; });
+    if (semId) return listaB; // não é uma lista de registros com id — B vence
+    var porId = {};
+    listaA.forEach(function (it) { porId[it.id] = it; });
+    listaB.forEach(function (it) {
+      var atual = porId[it.id];
+      if (!atual || timestampDoItem(it) >= timestampDoItem(atual)) porId[it.id] = it;
+    });
+    return Object.keys(porId).map(function (id) { return porId[id]; });
+  }
+
   function esperarSDK(cb, tries) {
     tries = tries || 0;
     if (typeof firebase !== 'undefined') { cb(); return; }
@@ -1716,13 +1820,26 @@
       SyncEngine._lastSyncError = null;
       if (!snap.exists) return;
       var data = snap.data() || {};
+
+      // Mescla os tombstones vindos do servidor com os locais antes de tudo,
+      // pra já usar a versão unificada ao filtrar as listas abaixo.
+      if (window.FT_Tombstones && data._tombstones !== undefined) {
+        var tombLocal = FT_Tombstones.obterTodos();
+        var tombMesclado = FT_Tombstones.mesclar(data._tombstones, tombLocal);
+        if (JSON.stringify(tombLocal) !== JSON.stringify(tombMesclado)) {
+          localStorage.setItem('ft_tombstones', JSON.stringify(tombMesclado));
+        }
+      }
+
       (window.FT_DATA_KEYS || ['ft_colaboradores', 'ft_postos', 'ft_registros', 'ft_bico_fixo']).forEach(function (key) {
         if (data[key] === undefined) return;
         var local = FT_Store.getSync(key);
-        if (JSON.stringify(local) !== JSON.stringify(data[key])) {
-          localStorage.setItem(key, JSON.stringify(data[key]));
-          FT_Store.set(key, data[key]);
-          if (window.FT_onRemoteUpdate) window.FT_onRemoteUpdate(key, data[key]);
+        var mesclado = mergeListasPorId(data[key], local);
+        if (window.FT_Tombstones) mesclado = FT_Tombstones.filtrar(key, mesclado);
+        if (JSON.stringify(local) !== JSON.stringify(mesclado)) {
+          localStorage.setItem(key, JSON.stringify(mesclado));
+          FT_Store.set(key, mesclado);
+          if (window.FT_onRemoteUpdate) window.FT_onRemoteUpdate(key, mesclado);
         }
       });
     }, function (err) {
@@ -1750,11 +1867,26 @@
         var db = firebase.firestore();
         var DOC_REF = db.collection('ft_app_data').doc('main');
 
-        // Grava cada entrada da fila no documento único (mesma estratégia do sistema original)
+        // Grava cada entrada da fila com merge por id via transação — lê o estado
+        // mais recente do servidor na hora de escrever, pra não sobrescrever
+        // registros que outro dispositivo tenha adicionado nesse meio tempo.
+        // A entrada especial "_tombstones" (registro de exclusões) usa merge
+        // próprio, por não ser uma lista de itens com "id".
         SyncEngine.setRemote(function (entry) {
-          var update = {};
-          update[entry.store] = entry.payload;
-          return DOC_REF.set(update, { merge: true }).then(function () { return true; });
+          return db.runTransaction(function (tx) {
+            return tx.get(DOC_REF).then(function (doc) {
+              var dataAtual = doc.exists ? (doc.data() || {}) : {};
+              var update = {};
+              if (entry.store === '_tombstones') {
+                update._tombstones = window.FT_Tombstones ? FT_Tombstones.mesclar(dataAtual._tombstones, entry.payload) : entry.payload;
+              } else {
+                var mesclado = mergeListasPorId(dataAtual[entry.store], entry.payload);
+                if (window.FT_Tombstones) mesclado = FT_Tombstones.filtrar(entry.store, mesclado);
+                update[entry.store] = mesclado;
+              }
+              tx.set(DOC_REF, update, { merge: true });
+            });
+          }).then(function () { return true; });
         });
 
         // Listener em tempo real: aplica alterações vindas de outros dispositivos,
@@ -2010,6 +2142,7 @@ var CadastrosModule = (function () {
     if (!item) return;
     if (!confirm('Remover colaborador "' + item.nome + '"?')) return;
     colaboradores = colaboradores.filter(function (c) { return c.id !== id; });
+    if (window.FT_Tombstones) FT_Tombstones.registrar('ft_colaboradores', id);
     saveStorage(LS_COLAB, colaboradores);
     renderColaboradoresList();
     refreshFTSelects();
@@ -2036,6 +2169,7 @@ var CadastrosModule = (function () {
     if (!item) return;
     if (!confirm('Remover posto "' + item.nome + '"?')) return;
     postos = postos.filter(function (p) { return p.id !== id; });
+    if (window.FT_Tombstones) FT_Tombstones.registrar('ft_postos', id);
     saveStorage(LS_POSTOS, postos);
     renderPostosList();
     refreshFTSelects();
@@ -2670,6 +2804,7 @@ var HistoricoModule = (function () {
     if (!item) return;
     if (!confirm('Excluir esta FT (' + (item.posto || '—') + ' · ' + fmtDataHora(item.dataHora || item.criadoEm) + ')?')) return;
     lista = lista.filter(function (ft) { return ft.id !== id; });
+    if (window.FT_Tombstones) FT_Tombstones.registrar('ft_registros', id);
     salvarRegistros(lista);
     refresh();
     showToast('🗑️ FT excluída.', 'success');
@@ -3329,6 +3464,7 @@ var BicoFixoModule = (function () {
     if (!b) return;
     if (!confirm('Excluir o bico fixo de "' + b.colaborador + '" no posto "' + b.posto + '"?')) return;
     bicos = bicos.filter(function (x) { return x.id !== id; });
+    if (window.FT_Tombstones) FT_Tombstones.registrar('ft_bico_fixo', id);
     saveStorage(bicos);
     renderSummary(); renderLista();
     if (editandoId === id) limparForm();
