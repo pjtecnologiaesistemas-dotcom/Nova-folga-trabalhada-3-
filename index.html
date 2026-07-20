@@ -2398,7 +2398,23 @@ var FTModule = (function () {
     }, 300);
   }
 
+  function tentarAutoPreencherValorBico() {
+    var motivo = document.getElementById('motivo').value;
+    if (motivo !== 'Bico Fixo') return;
+    var posto = document.getElementById('posto').value;
+    var substituto = document.getElementById('substituto').value;
+    var campoValor = document.getElementById('valor');
+    if (!posto || !substituto || !window.BicoFixoModule) return;
+    var bico = BicoFixoModule.encontrarBico(substituto, posto);
+    if (bico && (!campoValor.value || parseFloat(campoValor.value) === 0)) {
+      campoValor.value = bico.valor || '';
+    }
+  }
+
   document.getElementById('motivo').addEventListener('change', handleMotivoChange);
+  document.getElementById('motivo').addEventListener('change', tentarAutoPreencherValorBico);
+  document.getElementById('posto').addEventListener('change', tentarAutoPreencherValorBico);
+  document.getElementById('substituto').addEventListener('change', tentarAutoPreencherValorBico);
   document.getElementById('ftForm').addEventListener('submit', submitForm);
   document.getElementById('btnLimpar').addEventListener('click', function () {
     document.getElementById('ftForm').reset();
@@ -3202,7 +3218,7 @@ var BicoFixoModule = (function () {
         '<div class="bico-item-info">&#x1F550; ' + escHtml(b.horario || '—') + '</div>' +
         '<div class="bico-item-info">&#x1F4C5; Início: ' + dataInicioTxt + '</div>' +
         '<div class="bico-item-info">&#x1F4B0; <strong>' + fmtMoeda(b.valor) + '</strong> / diária</div>' +
-        '<div class="bico-item-real"><span class="real-label">&#x2705; Lançado &middot; ' + labelPeriodo(periodoAtual) + '</span><span class="real-value">' + fmtMoeda(real) + '</span></div>' +
+        '<div class="bico-item-real"><span class="real-label">' + (real > 0 ? '&#x2705; Lançado' : '&#x26A0;&#xFE0F; Não lançado') + ' &middot; ' + labelPeriodo(periodoAtual) + '</span><span class="real-value">' + fmtMoeda(real) + '</span></div>' +
         diasHtml + obsHtml +
         '<div class="bico-item-actions">' +
           '<button class="btn-edit-item" data-id="' + b.id + '" title="Editar">&#x270F;&#xFE0F;</button>' +
@@ -3408,9 +3424,16 @@ var BicoFixoModule = (function () {
     }
   };
 
-  document.getElementById('bicoDataInicio').value = hojeISO();
+  function encontrarBico(colaborador, posto) {
+    var colabNorm = (colaborador || '').trim().toLowerCase();
+    var postoNorm = (posto || '').trim().toLowerCase();
+    return bicos.find(function (b) {
+      return (b.colaborador || '').trim().toLowerCase() === colabNorm &&
+             (b.posto || '').trim().toLowerCase() === postoNorm;
+    }) || null;
+  }
 
-  return { refresh: refresh };
+  return { refresh: refresh, encontrarBico: encontrarBico };
 }());
 
 /* ════════════════════════════════════════════════════════════
