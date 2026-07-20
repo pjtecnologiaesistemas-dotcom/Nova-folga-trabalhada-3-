@@ -388,6 +388,17 @@
   .btn-add:active { transform: scale(.97); }
 
   .list-items { display: flex; flex-direction: column; gap: 8px; }
+  .list-items.collapsed { display: none; }
+  .list-toggle-row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .btn-list-toggle {
+    border: 1px solid var(--border); border-radius: 10px; background: var(--input-bg); color: var(--text);
+    font-family: 'Exo 2', sans-serif; font-size: .78rem; font-weight: 700; padding: 10px 14px; cursor: pointer;
+    white-space: nowrap; flex-shrink: 0; transition: border-color .2s, color .2s;
+  }
+  .btn-list-toggle:active { transform: scale(.97); }
+  .btn-list-toggle.active { border-color: var(--accent1); color: var(--accent1); }
+  .list-search { flex: 1; min-width: 0; display: none; }
+  .list-search.show { display: block; }
   .list-item {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
     background: var(--input-bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: .9rem;
@@ -811,7 +822,11 @@
         <input type="text" id="inputColaborador" placeholder="Nome do colaborador…" maxlength="80">
         <button class="btn-add" id="btnAddColaborador">+ Adicionar</button>
       </div>
-      <div class="list-items" id="listaColaboradores"><p class="empty-state">Nenhum colaborador cadastrado.</p></div>
+      <div class="list-toggle-row">
+        <button type="button" class="btn-list-toggle" id="btnToggleColaboradores">&#x1F441;&#xFE0F; Mostrar lista</button>
+        <input type="text" id="buscaColaborador" class="list-search" placeholder="Buscar colaborador…">
+      </div>
+      <div class="list-items collapsed" id="listaColaboradores"><p class="empty-state">Nenhum colaborador cadastrado.</p></div>
     </div>
 
     <div class="cadastro-section">
@@ -820,7 +835,11 @@
         <input type="text" id="inputPosto" placeholder="Nome do posto…" maxlength="80">
         <button class="btn-add" id="btnAddPosto">+ Adicionar</button>
       </div>
-      <div class="list-items" id="listaPostos"><p class="empty-state">Nenhum posto cadastrado.</p></div>
+      <div class="list-toggle-row">
+        <button type="button" class="btn-list-toggle" id="btnTogglePostos">&#x1F441;&#xFE0F; Mostrar lista</button>
+        <input type="text" id="buscaPosto" class="list-search" placeholder="Buscar posto…">
+      </div>
+      <div class="list-items collapsed" id="listaPostos"><p class="empty-state">Nenhum posto cadastrado.</p></div>
     </div>
   </div>
 
@@ -1908,12 +1927,17 @@ var CadastrosModule = (function () {
   var colaboradores = loadStorage(LS_COLAB);
   var postos = loadStorage(LS_POSTOS);
 
+  var colabExpandido = false;
+
   function renderColaboradoresList() {
     var list = document.getElementById('listaColaboradores');
     var b = document.getElementById('badge-colaboradores');
     if (b) b.textContent = colaboradores.length || 0;
+    var termo = (document.getElementById('buscaColaborador').value || '').trim().toLowerCase();
+    var fonte = termo ? colaboradores.filter(function (c) { return c.nome.toLowerCase().indexOf(termo) !== -1; }) : colaboradores;
     if (!colaboradores.length) { list.innerHTML = '<p class="empty-state">Nenhum colaborador cadastrado.</p>'; return; }
-    list.innerHTML = sortAlpha(colaboradores).map(function (c) {
+    if (!fonte.length) { list.innerHTML = '<p class="empty-state">Nenhum colaborador encontrado para "' + escHtml(termo) + '".</p>'; return; }
+    list.innerHTML = sortAlpha(fonte).map(function (c) {
       return '<div class="list-item" data-id="' + c.id + '">' +
         '<span>&#x1F464; ' + escHtml(c.nome) + '</span>' +
         '<div style="display:flex;gap:4px;flex-shrink:0;">' +
@@ -1922,18 +1946,47 @@ var CadastrosModule = (function () {
     }).join('');
   }
 
+  function atualizarVisibilidadeColaboradores() {
+    var list = document.getElementById('listaColaboradores');
+    var toggle = document.getElementById('btnToggleColaboradores');
+    var busca = document.getElementById('buscaColaborador');
+    var termo = (busca.value || '').trim();
+    var visivel = colabExpandido || !!termo;
+    list.classList.toggle('collapsed', !visivel);
+    busca.classList.toggle('show', colabExpandido);
+    toggle.classList.toggle('active', colabExpandido);
+    toggle.innerHTML = colabExpandido ? '&#x1F648; Ocultar lista' : '&#x1F441;&#xFE0F; Mostrar lista';
+  }
+
+  var postosExpandido = false;
+
   function renderPostosList() {
     var list = document.getElementById('listaPostos');
     var b = document.getElementById('badge-postos');
     if (b) b.textContent = postos.length || 0;
+    var termo = (document.getElementById('buscaPosto').value || '').trim().toLowerCase();
+    var fonte = termo ? postos.filter(function (p) { return p.nome.toLowerCase().indexOf(termo) !== -1; }) : postos;
     if (!postos.length) { list.innerHTML = '<p class="empty-state">Nenhum posto cadastrado.</p>'; return; }
-    list.innerHTML = sortAlpha(postos).map(function (p) {
+    if (!fonte.length) { list.innerHTML = '<p class="empty-state">Nenhum posto encontrado para "' + escHtml(termo) + '".</p>'; return; }
+    list.innerHTML = sortAlpha(fonte).map(function (p) {
       return '<div class="list-item" data-id="' + p.id + '">' +
         '<span>&#x1F4CD; ' + escHtml(p.nome) + '</span>' +
         '<div style="display:flex;gap:4px;flex-shrink:0;">' +
           '<button class="btn-remove" data-id="' + p.id + '" data-tipo="posto" title="Remover">&#x2715;</button>' +
         '</div></div>';
     }).join('');
+  }
+
+  function atualizarVisibilidadePostos() {
+    var list = document.getElementById('listaPostos');
+    var toggle = document.getElementById('btnTogglePostos');
+    var busca = document.getElementById('buscaPosto');
+    var termo = (busca.value || '').trim();
+    var visivel = postosExpandido || !!termo;
+    list.classList.toggle('collapsed', !visivel);
+    busca.classList.toggle('show', postosExpandido);
+    toggle.classList.toggle('active', postosExpandido);
+    toggle.innerHTML = postosExpandido ? '&#x1F648; Ocultar lista' : '&#x1F441;&#xFE0F; Mostrar lista';
   }
 
   function refreshFTSelects() {
@@ -1998,6 +2051,27 @@ var CadastrosModule = (function () {
   document.getElementById('inputColaborador').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addColaborador(); } });
   document.getElementById('btnAddPosto').addEventListener('click', addPosto);
   document.getElementById('inputPosto').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addPosto(); } });
+
+  document.getElementById('btnToggleColaboradores').addEventListener('click', function () {
+    colabExpandido = !colabExpandido;
+    if (!colabExpandido) document.getElementById('buscaColaborador').value = '';
+    renderColaboradoresList();
+    atualizarVisibilidadeColaboradores();
+  });
+  document.getElementById('buscaColaborador').addEventListener('input', function () {
+    renderColaboradoresList();
+    atualizarVisibilidadeColaboradores();
+  });
+  document.getElementById('btnTogglePostos').addEventListener('click', function () {
+    postosExpandido = !postosExpandido;
+    if (!postosExpandido) document.getElementById('buscaPosto').value = '';
+    renderPostosList();
+    atualizarVisibilidadePostos();
+  });
+  document.getElementById('buscaPosto').addEventListener('input', function () {
+    renderPostosList();
+    atualizarVisibilidadePostos();
+  });
 
   document.getElementById('listaColaboradores').addEventListener('click', function (e) {
     var btn = e.target.closest('.btn-remove');
@@ -2101,6 +2175,8 @@ var CadastrosModule = (function () {
 
   renderColaboradoresList();
   renderPostosList();
+  atualizarVisibilidadeColaboradores();
+  atualizarVisibilidadePostos();
 
   return {
     getColaboradores: function () { return colaboradores; },
