@@ -502,10 +502,15 @@
   .modal-box.wide .modal-title { text-align: left; }
 
   /* Bico Fixo */
-  .bico-summary { display: flex; gap: 12px; margin-bottom: 16px; }
-  .bico-summary-card { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 10px; text-align: center; box-shadow: var(--shadow); }
-  .bico-summary-value { font-family: 'Orbitron', sans-serif; font-size: 1.25rem; font-weight: 900; margin-bottom: 3px; }
-  .bico-summary-label { font-size: .65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; font-weight: 700; }
+  .bico-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .bico-summary-card {
+    position: relative; overflow: hidden; border-radius: var(--radius); padding: 18px 14px; text-align: center;
+    box-shadow: var(--shadow); border: 1px solid var(--border);
+  }
+  .bico-summary-card.card-ativos { background: linear-gradient(155deg, rgba(38,222,129,.22) 0%, var(--card) 65%); border-color: rgba(38,222,129,.4); }
+  .bico-summary-card.card-valor { background: linear-gradient(155deg, rgba(165,94,234,.24) 0%, var(--card) 65%); border-color: rgba(165,94,234,.4); }
+  .bico-summary-value { font-family: 'Orbitron', sans-serif; font-size: 1.5rem; font-weight: 900; margin-bottom: 4px; text-shadow: 0 0 18px rgba(0,0,0,.35); }
+  .bico-summary-label { font-size: .66rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 800; }
 
   .day-chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
   .day-chip {
@@ -519,27 +524,36 @@
   .bico-toggle-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent2); cursor: pointer; }
   .bico-toggle-row label { font-size: .88rem; cursor: pointer; }
 
-  .bico-estimate { font-size: .8rem; color: var(--muted); margin-top: 6px; }
-  .bico-estimate strong { color: var(--accent2); }
-
   .bico-filters-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
   .bico-filters-row > * { flex: 1 1 140px; min-width: 0; }
 
-  .bico-list { display: flex; flex-direction: column; gap: 10px; }
-  .bico-item { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
-  .bico-item.inativo { opacity: .55; }
-  .bico-item-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
-  .bico-item-title { font-weight: 700; font-size: .92rem; }
+  .bico-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+  .bico-item {
+    position: relative; background: linear-gradient(165deg, var(--card) 0%, #171d2b 100%);
+    border: 1px solid var(--border); border-left: 4px solid var(--accent2);
+    border-radius: var(--radius); padding: 16px 16px 14px; box-shadow: var(--shadow);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .bico-item:active { transform: scale(.98); }
+  .bico-item.inativo { border-left-color: var(--muted); opacity: .6; }
+  .bico-item-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+  .bico-item-title { font-weight: 800; font-size: .94rem; line-height: 1.35; }
   .bico-item-title .posto-sep { color: var(--muted); margin: 0 4px; font-weight: 400; }
-  .bico-status-badge { font-size: .62rem; font-weight: 800; padding: 3px 9px; border-radius: 12px; text-transform: uppercase; letter-spacing: .3px; white-space: nowrap; }
-  .bico-status-badge.ativo { background: rgba(38,222,129,.15); color: var(--accent2); border: 1px solid rgba(38,222,129,.4); }
+  .bico-status-badge { font-size: .62rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; flex-shrink: 0; }
+  .bico-status-badge.ativo { background: linear-gradient(135deg, rgba(38,222,129,.28), rgba(38,222,129,.12)); color: var(--accent2); border: 1px solid rgba(38,222,129,.5); box-shadow: 0 0 10px rgba(38,222,129,.15); }
   .bico-status-badge.inativo { background: rgba(139,151,176,.15); color: var(--muted); border: 1px solid var(--border); }
-  .bico-item-info { font-size: .82rem; color: var(--muted); margin-bottom: 4px; }
-  .bico-item-info strong { color: var(--text); font-weight: 600; }
-  .bico-item-dias { display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0; }
-  .bico-item-dias span { background: rgba(165,94,234,.12); border: 1px solid rgba(165,94,234,.3); color: var(--purple); font-size: .68rem; font-weight: 700; padding: 3px 8px; border-radius: 10px; }
+  .bico-item-info { font-size: .82rem; color: var(--muted); margin-bottom: 5px; display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; }
+  .bico-item-info strong { color: var(--text); font-weight: 700; }
+  .bico-item-real {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 4px;
+    background: rgba(165,94,234,.1); border: 1px solid rgba(165,94,234,.3); border-radius: 10px; padding: 9px 12px;
+  }
+  .bico-item-real .real-label { font-size: .66rem; color: var(--purple); text-transform: uppercase; font-weight: 800; letter-spacing: .3px; }
+  .bico-item-real .real-value { font-family: 'Orbitron', sans-serif; font-size: 1rem; font-weight: 900; color: var(--purple); }
+  .bico-item-dias { display: flex; gap: 4px; flex-wrap: wrap; margin: 10px 0 8px; }
+  .bico-item-dias span { background: rgba(69,170,242,.14); border: 1px solid rgba(69,170,242,.35); color: var(--accent3); font-size: .68rem; font-weight: 700; padding: 3px 9px; border-radius: 10px; }
   .bico-item-obs { font-size: .8rem; color: var(--muted); font-style: italic; margin-bottom: 8px; }
-  .bico-item-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .bico-item-actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; }
 
   /* Pagamentos */
   .pag-filters-row { display: flex; gap: 10px; margin-bottom: 14px; }
@@ -879,24 +893,6 @@
       </div>
     </div>
 
-    <div class="cadastro-section" id="dashBicoCompararWrap">
-      <h2 class="col-purple">&#x1F4A0; Bico Fixo — Projetado vs. Lançado</h2>
-      <div class="dash-stats-grid">
-        <div class="dash-stat-card">
-          <div class="dash-stat-value col-purple" id="dashBicoProjetado">R$ 0,00</div>
-          <div class="dash-stat-label">Projetado (pela recorrência)</div>
-        </div>
-        <div class="dash-stat-card">
-          <div class="dash-stat-value col-green" id="dashBicoLancado">R$ 0,00</div>
-          <div class="dash-stat-label">Lançado (FTs de fato)</div>
-        </div>
-        <div class="dash-stat-card">
-          <div class="dash-stat-value col-orange" id="dashBicoDiferenca">R$ 0,00</div>
-          <div class="dash-stat-label">Diferença (a lançar)</div>
-        </div>
-      </div>
-    </div>
-
     <div class="cadastro-section">
       <h2 class="col-orange">&#x1F4AC; Por Motivo</h2>
       <div class="dash-bars" id="dashPorMotivo"><p class="empty-state">Sem registros no período.</p></div>
@@ -942,8 +938,8 @@
         <div class="dash-stat-label">Valor total FTs</div>
       </div>
       <div class="dash-stat-card">
-        <div class="dash-stat-value col-purple" id="geralValorBico">R$ 0,00</div>
-        <div class="dash-stat-label">Bico Fixo (est./mês)</div>
+        <div class="dash-stat-value col-purple" id="geralBicosAtivos">0</div>
+        <div class="dash-stat-label">Bicos Fixos ativos</div>
       </div>
       <div class="dash-stat-card">
         <div class="dash-stat-value col-orange" id="geralValorPendente">R$ 0,00</div>
@@ -1057,13 +1053,13 @@
     </div>
 
     <div class="bico-summary">
-      <div class="bico-summary-card">
+      <div class="bico-summary-card card-ativos">
         <div class="bico-summary-value col-green" id="bicoTotalAtivos">0</div>
-        <div class="bico-summary-label">Bicos ativos</div>
+        <div class="bico-summary-label">&#x1F4A0; Bicos ativos</div>
       </div>
-      <div class="bico-summary-card">
+      <div class="bico-summary-card card-valor">
         <div class="bico-summary-value col-purple" id="bicoValorMensal">R$ 0,00</div>
-        <div class="bico-summary-label" id="bicoValorMensalLabel">Valor real do período</div>
+        <div class="bico-summary-label" id="bicoValorMensalLabel">&#x2705; Lançado (real)</div>
       </div>
     </div>
 
@@ -1113,7 +1109,6 @@
         <div class="field">
           <div class="field-label col-green"><span class="dot bg-green"></span>Valor por diária (R$)</div>
           <div class="input-prefix"><span>R$</span><input type="number" id="bicoValor" min="0" step="0.01" placeholder="0,00"></div>
-          <p class="bico-estimate" id="bicoEstimativa">Estimativa mensal: <strong>R$ 0,00</strong></p>
         </div>
         <div class="field">
           <div class="field-label col-blue"><span class="dot bg-blue"></span>Observação <span style="font-size:.7rem;color:var(--muted);font-weight:400;text-transform:none;">(opcional)</span></div>
@@ -2490,62 +2485,6 @@ document.getElementById('btnNovoCiclo').addEventListener('click', function () {
     document.getElementById('dashPostosAtivos').textContent = Object.keys(postosAtivos).length;
   }
 
-  function getBicos() {
-    try { return JSON.parse(localStorage.getItem('ft_bico_fixo') || '[]'); } catch (e) { return []; }
-  }
-
-  var DIA_ORDEM_IDX = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB']; // igual Date#getDay()
-
-  function ymdParaDataLocal(str) {
-    if (!str) return null;
-    var p = String(str).split('-');
-    if (p.length !== 3) return null;
-    return new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
-  }
-
-  // ── Limites de data por período, no mesmo padrão usado na aba Bico Fixo ──
-  function limitesPeriodoBico(periodo) {
-    var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-    var inicio;
-    if (periodo === 'mes') { inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1); }
-    else if (periodo === '7d') { inicio = new Date(hoje); inicio.setDate(inicio.getDate() - 6); }
-    else if (periodo === '30d') { inicio = new Date(hoje); inicio.setDate(inicio.getDate() - 29); }
-    else { inicio = null; }
-    return { inicio: inicio, fim: hoje };
-  }
-
-  function contarOcorrenciasBico(bico, periodo) {
-    var lim = limitesPeriodoBico(periodo);
-    var inicioBico = ymdParaDataLocal(bico.dataInicio);
-    var cursor = inicioBico && (!lim.inicio || inicioBico > lim.inicio) ? inicioBico : lim.inicio;
-    if (!cursor) cursor = inicioBico;
-    if (!cursor || cursor > lim.fim) return 0;
-    var dias = bico.dias || [];
-    if (!dias.length) return 0;
-    var count = 0;
-    var d = new Date(cursor);
-    while (d <= lim.fim) {
-      if (dias.indexOf(DIA_ORDEM_IDX[d.getDay()]) !== -1) count++;
-      d.setDate(d.getDate() + 1);
-    }
-    return count;
-  }
-
-  function valorProjetadoBicos(periodo) {
-    return getBicos().filter(function (b) { return b.ativo; })
-      .reduce(function (acc, b) { return acc + (parseFloat(b.valor) || 0) * contarOcorrenciasBico(b, periodo); }, 0);
-  }
-
-  function renderComparativoBico(listaCompleta, periodo) {
-    var projetado = valorProjetadoBicos(periodo);
-    var lancado = listaCompleta.filter(function (ft) { return (ft.motivo || '').trim() === 'Bico Fixo'; })
-      .reduce(function (acc, ft) { return acc + (parseFloat(ft.valor) || 0); }, 0);
-    var diferenca = projetado - lancado;
-    document.getElementById('dashBicoProjetado').textContent = fmtMoeda(projetado);
-    document.getElementById('dashBicoLancado').textContent = fmtMoeda(lancado);
-    document.getElementById('dashBicoDiferenca').textContent = fmtMoeda(diferenca < 0 ? 0 : diferenca);
-  }
-
   function renderPorMotivo(lista) {
     var el = document.getElementById('dashPorMotivo');
     var grupos = agrupar(lista, 'motivo');
@@ -2588,7 +2527,6 @@ document.getElementById('btnNovoCiclo').addEventListener('click', function () {
     renderPorMotivo(lista);
     renderRanking('dashTopPostos', lista, 'posto', 'Sem registros no período.');
     renderRanking('dashTopColab', lista, 'substituto', 'Sem registros no período.');
-    renderComparativoBico(listaPeriodo, periodo);
   }
 
   document.getElementById('dashPeriodo').addEventListener('change', refresh);
@@ -3004,7 +2942,6 @@ var BicoFixoModule = (function () {
   'use strict';
 
   var LS_BICO = 'ft_bico_fixo';
-  var SEMANAS_POR_MES = 4.345;
   var editandoId = null;
   var diasSelecionados = [];
 
@@ -3029,24 +2966,16 @@ var BicoFixoModule = (function () {
     var p = isoDate.split('-');
     return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : isoDate;
   }
-  function estimativaMensal(valor, numDias) { return (parseFloat(valor) || 0) * (numDias || 0) * SEMANAS_POR_MES; }
 
-  // ── Valor REAL do período (não estimativa): conta quantos dias já
-  //    efetivamente ocorreram dentro do período filtrado — respeitando a
-  //    data de início do bico e nunca contando além de hoje — e multiplica
-  //    pela diária. Diferente da estimativa mensal, que é só uma projeção
-  //    fixa (dias/semana × 4.345), aqui é a ocorrência real calendário a
-  //    calendário. ──
-  var DIA_ORDEM_IDX = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB']; // igual Date#getDay()
-
+  // ── Valor 100% REAL: soma apenas as FTs que já foram de fato lançadas
+  //    (ft_registros) com motivo "Bico Fixo", batendo colaborador + posto.
+  //    Não projeta nada — dia que não teve lançamento simplesmente não conta. ──
+  function getRegistros() {
+    try { return JSON.parse(localStorage.getItem('ft_registros') || '[]'); } catch (e) { return []; }
+  }
+  function dataDoRegistro(ft) { return (ft.dataHora || ft.criadoEm || '').slice(0, 10); }
   function pad2(n) { return String(n).padStart(2, '0'); }
   function paraYMD(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
-  function ymdParaData(ymd) {
-    var p = String(ymd || '').split('-');
-    if (p.length !== 3) return null;
-    var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
-    return isNaN(d.getTime()) ? null : d;
-  }
 
   function limitesPeriodo(periodo) {
     var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
@@ -3054,29 +2983,47 @@ var BicoFixoModule = (function () {
     if (periodo === 'mes') { inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1); }
     else if (periodo === '7d') { inicio = new Date(hoje); inicio.setDate(inicio.getDate() - 6); }
     else if (periodo === '30d') { inicio = new Date(hoje); inicio.setDate(inicio.getDate() - 29); }
-    else { inicio = null; } // 'todos' — sem piso, respeita só a data de início do bico
+    else { inicio = null; } // 'todos' — sem piso
     return { inicio: inicio, fim: hoje };
   }
 
-  function contarOcorrenciasReais(bico, periodo) {
+  // ── Soma real das FTs já lançadas (motivo "Bico Fixo") para um bico específico,
+  //    batendo colaborador + posto, dentro do período selecionado. ──
+  function valorLancadoReal(bico, periodo) {
     var lim = limitesPeriodo(periodo);
-    var inicioBico = ymdParaData(bico.dataInicio);
-    var cursor = inicioBico && (!lim.inicio || inicioBico > lim.inicio) ? inicioBico : lim.inicio;
-    if (!cursor) cursor = inicioBico; // sem data de início e período 'todos' — não dá pra contar, cai pro null abaixo
-    if (!cursor || cursor > lim.fim) return 0;
-    var dias = bico.dias || [];
-    if (!dias.length) return 0;
-    var count = 0;
-    var d = new Date(cursor);
-    while (d <= lim.fim) {
-      if (dias.indexOf(DIA_ORDEM_IDX[d.getDay()]) !== -1) count++;
-      d.setDate(d.getDate() + 1);
-    }
-    return count;
+    var inicioStr = lim.inicio ? paraYMD(lim.inicio) : null;
+    var fimStr = paraYMD(lim.fim);
+    var colabNorm = (bico.colaborador || '').trim().toLowerCase();
+    var postoNorm = (bico.posto || '').trim().toLowerCase();
+    return getRegistros().filter(function (ft) {
+      if ((ft.motivo || '').trim() !== 'Bico Fixo') return false;
+      if ((ft.substituto || '').trim().toLowerCase() !== colabNorm) return false;
+      if ((ft.posto || '').trim().toLowerCase() !== postoNorm) return false;
+      var d = dataDoRegistro(ft);
+      if (!d) return false;
+      if (inicioStr && d < inicioStr) return false;
+      if (d > fimStr) return false;
+      return true;
+    }).reduce(function (acc, ft) { return acc + (parseFloat(ft.valor) || 0); }, 0);
   }
 
-  function valorRealPeriodo(bico, periodo) {
-    return (parseFloat(bico.valor) || 0) * contarOcorrenciasReais(bico, periodo);
+  // ── Soma real total, respeitando os filtros de posto/colaborador da tela. ──
+  function valorRealTotalFiltrado(periodo) {
+    var posto = document.getElementById('bicoFiltroPosto').value;
+    var colaborador = document.getElementById('bicoFiltroColaborador').value;
+    var lim = limitesPeriodo(periodo);
+    var inicioStr = lim.inicio ? paraYMD(lim.inicio) : null;
+    var fimStr = paraYMD(lim.fim);
+    return getRegistros().filter(function (ft) {
+      if ((ft.motivo || '').trim() !== 'Bico Fixo') return false;
+      if (posto && ft.posto !== posto) return false;
+      if (colaborador && ft.substituto !== colaborador) return false;
+      var d = dataDoRegistro(ft);
+      if (!d) return false;
+      if (inicioStr && d < inicioStr) return false;
+      if (d > fimStr) return false;
+      return true;
+    }).reduce(function (acc, ft) { return acc + (parseFloat(ft.valor) || 0); }, 0);
   }
 
   function labelPeriodo(periodo) {
@@ -3193,19 +3140,12 @@ var BicoFixoModule = (function () {
     var idx = diasSelecionados.indexOf(dia);
     if (idx === -1) diasSelecionados.push(dia); else diasSelecionados.splice(idx, 1);
     renderDiaChips();
-    atualizarEstimativa();
   }
 
   function renderDiaChips() {
     document.querySelectorAll('#bicoDias .day-chip').forEach(function (chip) {
       chip.classList.toggle('active', diasSelecionados.indexOf(chip.dataset.dia) !== -1);
     });
-  }
-
-  function atualizarEstimativa() {
-    var valor = document.getElementById('bicoValor').value;
-    var est = estimativaMensal(valor, diasSelecionados.length);
-    document.getElementById('bicoEstimativa').innerHTML = 'Estimativa mensal: <strong>' + fmtMoeda(est) + '</strong>';
   }
 
   var DIA_LABEL = { DOM: 'Dom', SEG: 'Seg', TER: 'Ter', QUA: 'Qua', QUI: 'Qui', SEX: 'Sex', SAB: 'Sáb' };
@@ -3215,13 +3155,13 @@ var BicoFixoModule = (function () {
     var filtrados = getFiltrados();
     var ativosFiltrados = filtrados.filter(function (b) { return b.ativo; });
     var periodo = document.getElementById('bicoFiltroPeriodo').value;
-    var totalValor = ativosFiltrados.reduce(function (acc, b) { return acc + valorRealPeriodo(b, periodo); }, 0);
+    var totalValor = valorRealTotalFiltrado(periodo);
 
     document.getElementById('bicoTotalAtivos').textContent = ativosFiltrados.length;
     document.getElementById('bicoValorMensal').textContent = fmtMoeda(totalValor);
 
     var colabFiltro = document.getElementById('bicoFiltroColaborador').value;
-    document.getElementById('bicoValorMensalLabel').textContent = (colabFiltro ? 'Real — ' + colabFiltro : 'Valor real') + ' · ' + labelPeriodo(periodo);
+    document.getElementById('bicoValorMensalLabel').textContent = '✅ ' + (colabFiltro ? 'Lançado — ' + colabFiltro : 'Lançado (real)') + ' · ' + labelPeriodo(periodo);
   }
 
   function getFiltrados() {
@@ -3251,9 +3191,8 @@ var BicoFixoModule = (function () {
         ? '<div class="bico-item-dias">' + diasOrdenados.map(function (d) { return '<span>' + DIA_LABEL[d] + '</span>'; }).join('') + '</div>'
         : '';
       var obsHtml = b.observacao ? '<div class="bico-item-obs">&#x1F4DD; ' + escHtml(b.observacao) + '</div>' : '';
-      var est = estimativaMensal(b.valor, (b.dias || []).length);
       var periodoAtual = document.getElementById('bicoFiltroPeriodo').value;
-      var real = valorRealPeriodo(b, periodoAtual);
+      var real = valorLancadoReal(b, periodoAtual);
       var dataInicioTxt = b.dataInicio ? fmtDataBR(b.dataInicio) : '—';
       return '<div class="bico-item ' + (b.ativo ? '' : 'inativo') + '" data-id="' + b.id + '">' +
         '<div class="bico-item-top">' +
@@ -3262,8 +3201,8 @@ var BicoFixoModule = (function () {
         '</div>' +
         '<div class="bico-item-info">&#x1F550; ' + escHtml(b.horario || '—') + '</div>' +
         '<div class="bico-item-info">&#x1F4C5; Início: ' + dataInicioTxt + '</div>' +
-        '<div class="bico-item-info">&#x1F4B0; ' + fmtMoeda(b.valor) + ' / diária &nbsp;&middot;&nbsp; estimativa mensal: <strong>' + fmtMoeda(est) + '</strong></div>' +
-        '<div class="bico-item-info">&#x2705; Real (' + labelPeriodo(periodoAtual) + '): <strong>' + fmtMoeda(real) + '</strong></div>' +
+        '<div class="bico-item-info">&#x1F4B0; <strong>' + fmtMoeda(b.valor) + '</strong> / diária</div>' +
+        '<div class="bico-item-real"><span class="real-label">&#x2705; Lançado &middot; ' + labelPeriodo(periodoAtual) + '</span><span class="real-value">' + fmtMoeda(real) + '</span></div>' +
         diasHtml + obsHtml +
         '<div class="bico-item-actions">' +
           '<button class="btn-edit-item" data-id="' + b.id + '" title="Editar">&#x270F;&#xFE0F;</button>' +
@@ -3290,7 +3229,6 @@ var BicoFixoModule = (function () {
     document.getElementById('bicoDataInicio').value = hojeISO();
     diasSelecionados = [];
     renderDiaChips();
-    atualizarEstimativa();
     editandoId = null;
     document.getElementById('bicoFormTitulo').innerHTML = '&#x1F4A0; Novo Bico Fixo';
     document.getElementById('bicoSubmitBtn').innerHTML = '&#x2795; Adicionar Bico Fixo';
@@ -3313,7 +3251,6 @@ var BicoFixoModule = (function () {
     document.getElementById('bicoDataInicio').value = b.dataInicio || hojeISO();
     diasSelecionados = (b.dias || []).slice();
     renderDiaChips();
-    atualizarEstimativa();
 
     document.getElementById('bicoFormTitulo').innerHTML = '&#x270F;&#xFE0F; Editar Bico Fixo';
     document.getElementById('bicoSubmitBtn').innerHTML = '&#x1F4BE; Salvar Alterações';
@@ -3440,7 +3377,6 @@ var BicoFixoModule = (function () {
     var chip = e.target.closest('.day-chip');
     if (chip) toggleDia(chip.dataset.dia);
   });
-  document.getElementById('bicoValor').addEventListener('input', atualizarEstimativa);
   document.getElementById('bicoForm').addEventListener('submit', submitForm);
   setupHorarioToggleBico();
   document.getElementById('bicoCancelarEdicao').addEventListener('click', limparForm);
@@ -3472,7 +3408,6 @@ var BicoFixoModule = (function () {
     }
   };
 
-  atualizarEstimativa();
   document.getElementById('bicoDataInicio').value = hojeISO();
 
   return { refresh: refresh };
@@ -3731,8 +3666,6 @@ var PagamentosModule = (function () {
 var GeralModule = (function () {
   'use strict';
 
-  var SEMANAS_POR_MES = 4.345;
-
   function getRegistros() {
     try { return JSON.parse(localStorage.getItem('ft_registros') || '[]'); } catch (e) { return []; }
   }
@@ -3754,10 +3687,6 @@ var GeralModule = (function () {
     return lista.filter(function (ft) { return dataDoRegistro(ft) >= limiteStr; });
   }
 
-  function estimativaMensalBico(b) {
-    return (parseFloat(b.valor) || 0) * ((b.dias || []).length) * SEMANAS_POR_MES;
-  }
-
   function montarConsolidado() {
     var periodo = document.getElementById('geralPeriodo').value;
     var fts = filtrarPorPeriodo(getRegistros(), periodo);
@@ -3766,7 +3695,7 @@ var GeralModule = (function () {
 
     function getEntry(nomePosto) {
       var chave = (nomePosto || '—').trim() || '—';
-      if (!mapa[chave]) mapa[chave] = { nome: chave, ftCount: 0, ftValor: 0, pago: 0, pendente: 0, bicoCount: 0, bicoValor: 0 };
+      if (!mapa[chave]) mapa[chave] = { nome: chave, ftCount: 0, ftValor: 0, pago: 0, pendente: 0, bicoCount: 0 };
       return mapa[chave];
     }
 
@@ -3782,25 +3711,23 @@ var GeralModule = (function () {
       if (!b.ativo) return;
       var e = getEntry(b.posto);
       e.bicoCount += 1;
-      e.bicoValor += estimativaMensalBico(b);
     });
 
     return Object.keys(mapa).map(function (k) { return mapa[k]; })
       .sort(function (a, b) {
         if (b.pendente !== a.pendente) return b.pendente - a.pendente;
-        var totalA = a.ftValor + a.bicoValor, totalB = b.ftValor + b.bicoValor;
-        if (totalB !== totalA) return totalB - totalA;
+        if (b.ftValor !== a.ftValor) return b.ftValor - a.ftValor;
         return a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' });
       });
   }
 
   function renderStats(lista) {
     var valorFT = lista.reduce(function (acc, p) { return acc + p.ftValor; }, 0);
-    var valorBico = lista.reduce(function (acc, p) { return acc + p.bicoValor; }, 0);
+    var bicosAtivos = lista.reduce(function (acc, p) { return acc + p.bicoCount; }, 0);
     var pendente = lista.reduce(function (acc, p) { return acc + p.pendente; }, 0);
     document.getElementById('geralTotalPostos').textContent = lista.length;
     document.getElementById('geralValorFT').textContent = fmtMoedaBR(valorFT);
-    document.getElementById('geralValorBico').textContent = fmtMoedaBR(valorBico);
+    document.getElementById('geralBicosAtivos').textContent = bicosAtivos;
     document.getElementById('geralValorPendente').textContent = fmtMoedaBR(pendente);
   }
 
@@ -3818,8 +3745,7 @@ var GeralModule = (function () {
           '<div class="geral-metric"><span class="geral-metric-value col-orange">' + fmtMoedaBR(p.pendente) + '</span><span class="geral-metric-label">Pendente</span></div>' +
         '</div>' +
         '<div class="geral-posto-secundario">' +
-          '<span>&#x1F4A0; Bico: <strong>' + p.bicoCount + '</strong> ativo' + (p.bicoCount === 1 ? '' : 's') + '</span>' +
-          '<span>&#x1F4C8; Est./mês: <strong>' + fmtMoedaBR(p.bicoValor) + '</strong></span>' +
+          '<span>&#x1F4A0; Bico Fixo: <strong>' + p.bicoCount + '</strong> ativo' + (p.bicoCount === 1 ? '' : 's') + '</span>' +
         '</div></div>';
     }).join('');
   }
