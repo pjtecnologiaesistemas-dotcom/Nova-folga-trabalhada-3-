@@ -125,6 +125,36 @@
   .rail-divider { display: none; height: 1px; background: var(--border); margin: 8px 14px; flex-shrink: 0; }
   #railMenu.expanded .rail-divider { display: block; }
 
+  /* ── Logo PJ Tecnologia no rodapé do menu lateral ── */
+  .rail-footer-logo {
+    display: none; flex-direction: column; align-items: center;
+    margin: 18px 14px 20px; padding: 16px 10px 14px; border-radius: 12px;
+    background: #07111f; border: 1px solid rgba(0,200,248,.18); flex-shrink: 0;
+  }
+  #railMenu.expanded .rail-footer-logo { display: flex; }
+  .rail-footer-hex { position: relative; width: 40px; height: 44px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
+  .rail-footer-hex svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .rail-footer-mono {
+    font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: .82rem; letter-spacing: -1px;
+    position: relative; z-index: 2; line-height: 1; color: #fff; text-shadow: 0 0 10px rgba(0,234,255,.5);
+  }
+  .rail-footer-mono span { color: #00eaff; }
+  .rail-footer-brand {
+    font-family: 'Orbitron', sans-serif; font-size: .62rem; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; text-align: center; line-height: 1.3; color: #eef4ff; margin-top: 2px;
+  }
+  .rail-footer-brand span { color: #00eaff; }
+  .rail-footer-tag {
+    font-family: 'Rajdhani', sans-serif; font-size: .56rem; letter-spacing: 3px; text-transform: uppercase;
+    margin-top: 3px; text-align: center; color: #00c8f8; opacity: .6;
+  }
+  .rail-footer-div { width: 100%; height: 1px; margin: 9px 0 7px; background: linear-gradient(90deg, transparent, rgba(0,200,248,.4), transparent); }
+  .rail-footer-tagline {
+    font-family: 'Rajdhani', sans-serif; font-size: .52rem; letter-spacing: 1.4px; text-transform: uppercase;
+    text-align: center; line-height: 1.5; color: #c8d8f0; opacity: .55;
+  }
+  .rail-footer-tagline strong { color: #f0a500; opacity: 1; }
+
 
   #railBackdrop {
     position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 9640;
@@ -646,6 +676,35 @@
     <div class="rail-item" id="pending-badge" title="Toque para ver por que estas operações não sincronizaram"><span class="rail-icon">&#x23F3;</span><span class="rail-label"><span id="pending-count">0</span> pendente(s)</span></div>
     <div class="rail-item" id="diag-sync-btn" title="Abrir diagnóstico de sincronização"><span class="rail-icon">&#x1F527;</span><span class="rail-label">Diagnóstico</span></div>
     <div class="rail-item badge-auto"><span class="rail-icon">&#x1F4BE;</span><span class="rail-label">Offline-first</span></div>
+  </div>
+
+  <div class="rail-footer-logo">
+    <div class="rail-footer-hex">
+      <svg viewBox="0 0 100 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="railHexG1" x1="0" y1="0" x2="100" y2="110" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0d3878"/>
+            <stop offset="100%" stop-color="#051225"/>
+          </linearGradient>
+          <linearGradient id="railHexS1" x1="0" y1="0" x2="100" y2="110" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#00eaff"/>
+            <stop offset="100%" stop-color="#00a0cc"/>
+          </linearGradient>
+        </defs>
+        <polygon points="50,4 96,28 96,82 50,106 4,82 4,28" fill="url(#railHexG1)" stroke="url(#railHexS1)" stroke-width="3"/>
+        <circle cx="50" cy="4" r="2.5" fill="#00eaff" opacity=".7"/>
+        <circle cx="96" cy="28" r="2.5" fill="#00eaff" opacity=".7"/>
+        <circle cx="96" cy="82" r="2.5" fill="#00eaff" opacity=".7"/>
+        <circle cx="50" cy="106" r="2.5" fill="#00eaff" opacity=".7"/>
+        <circle cx="4" cy="82" r="2.5" fill="#00eaff" opacity=".7"/>
+        <circle cx="4" cy="28" r="2.5" fill="#00eaff" opacity=".7"/>
+      </svg>
+      <div class="rail-footer-mono">P<span>J</span></div>
+    </div>
+    <div class="rail-footer-brand"><span>PJ</span> Tecnologia</div>
+    <div class="rail-footer-tag">e Sistemas</div>
+    <div class="rail-footer-div"></div>
+    <div class="rail-footer-tagline"><strong>Inovação que conecta.</strong><br>Tecnologia que transforma.</div>
   </div>
 </nav>
 <div id="railBackdrop"></div>
