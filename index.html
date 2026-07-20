@@ -206,12 +206,18 @@
   .tab-panel.hidden { display: none; }
 
   .geral-posto-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); margin-bottom: 12px; }
-  .geral-posto-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-  .geral-posto-header h3 { font-family: 'Exo 2', sans-serif; font-size: .9rem; font-weight: 700; display: flex; align-items: center; gap: 6px; }
-  .geral-posto-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .geral-metric { display: flex; flex-direction: column; align-items: center; gap: 2px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 4px; text-align: center; }
+  .geral-posto-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .geral-posto-header h3 { font-family: 'Exo 2', sans-serif; font-size: .92rem; font-weight: 700; display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .geral-posto-total { font-family: 'Orbitron', sans-serif; font-size: .82rem; font-weight: 800; color: var(--accent1); white-space: nowrap; flex-shrink: 0; }
+  .geral-posto-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 8px; }
+  .geral-metric { display: flex; flex-direction: column; align-items: center; gap: 2px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 4px; text-align: center; min-width: 0; }
   .geral-metric-value { font-family: 'Orbitron', sans-serif; font-size: .82rem; font-weight: 800; word-break: break-word; }
-  .geral-metric-label { font-size: .6rem; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; font-weight: 700; }
+  .geral-metric-label { font-size: .58rem; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; font-weight: 700; }
+  .geral-posto-secundario {
+    display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; padding-top: 10px;
+    border-top: 1px dashed var(--border); font-size: .68rem; color: var(--muted); font-weight: 600;
+  }
+  .geral-posto-secundario span strong { color: var(--text); font-weight: 800; }
   .floating-alerts { position: fixed; inset: 0; z-index: 9998; display: flex; align-items: center; justify-content: center; padding: 20px; pointer-events: none; opacity: 0; transition: opacity .2s; }
   .floating-alerts.has-alert { background: rgba(0,0,0,.72); pointer-events: all; opacity: 1; }
   .floating-alert-card { pointer-events: all; background: var(--card); border: 2px solid var(--danger); border-radius: 18px; box-shadow: 0 12px 48px rgba(252,92,101,.35); padding: 30px 24px 24px; max-width: 440px; width: 100%; max-height: 88vh; overflow-y: auto; animation: floatIn .3s ease; }
@@ -398,7 +404,7 @@
   /* Dashboard */
   .dash-filter-row { display: flex; gap: 10px; margin-bottom: 16px; }
   .dash-filter-row select { flex: 1; }
-  .dash-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+  .dash-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 18px; }
   .dash-stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 12px; box-shadow: var(--shadow); text-align: center; }
   .dash-stat-value { font-family: 'Orbitron', sans-serif; font-size: 1.35rem; font-weight: 900; margin-bottom: 4px; line-height: 1.2; }
   .dash-stat-label { font-size: .66rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 700; }
@@ -3704,7 +3710,12 @@ var GeralModule = (function () {
     });
 
     return Object.keys(mapa).map(function (k) { return mapa[k]; })
-      .sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }); });
+      .sort(function (a, b) {
+        if (b.pendente !== a.pendente) return b.pendente - a.pendente;
+        var totalA = a.ftValor + a.bicoValor, totalB = b.ftValor + b.bicoValor;
+        if (totalB !== totalA) return totalB - totalA;
+        return a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' });
+      });
   }
 
   function renderStats(lista) {
@@ -3724,14 +3735,15 @@ var GeralModule = (function () {
     if (!filtrada.length) { el.innerHTML = '<p class="empty-state">Nenhum posto com movimento no período.</p>'; return; }
     el.innerHTML = filtrada.map(function (p) {
       return '<div class="geral-posto-card">' +
-        '<div class="geral-posto-header"><h3>&#x1F4CD; ' + escHtml(p.nome) + '</h3></div>' +
+        '<div class="geral-posto-header"><h3>&#x1F4CD; ' + escHtml(p.nome) + '</h3><span class="geral-posto-total">' + fmtMoedaBR(p.ftValor) + '</span></div>' +
         '<div class="geral-posto-metrics">' +
           '<div class="geral-metric"><span class="geral-metric-value col-amber">' + p.ftCount + '</span><span class="geral-metric-label">FT' + (p.ftCount === 1 ? '' : 's') + '</span></div>' +
-          '<div class="geral-metric"><span class="geral-metric-value col-green">' + fmtMoedaBR(p.ftValor) + '</span><span class="geral-metric-label">Valor FTs</span></div>' +
-          '<div class="geral-metric"><span class="geral-metric-value col-purple">' + p.bicoCount + '</span><span class="geral-metric-label">Bicos ativos</span></div>' +
-          '<div class="geral-metric"><span class="geral-metric-value col-purple">' + fmtMoedaBR(p.bicoValor) + '</span><span class="geral-metric-label">Bico est./mês</span></div>' +
           '<div class="geral-metric"><span class="geral-metric-value col-green">' + fmtMoedaBR(p.pago) + '</span><span class="geral-metric-label">Pago</span></div>' +
           '<div class="geral-metric"><span class="geral-metric-value col-orange">' + fmtMoedaBR(p.pendente) + '</span><span class="geral-metric-label">Pendente</span></div>' +
+        '</div>' +
+        '<div class="geral-posto-secundario">' +
+          '<span>&#x1F4A0; Bico: <strong>' + p.bicoCount + '</strong> ativo' + (p.bicoCount === 1 ? '' : 's') + '</span>' +
+          '<span>&#x1F4C8; Est./mês: <strong>' + fmtMoedaBR(p.bicoValor) + '</strong></span>' +
         '</div></div>';
     }).join('');
   }
