@@ -325,6 +325,53 @@
   select:focus, input:focus, textarea:focus { border-color: var(--accent1); box-shadow: 0 0 0 3px rgba(247,183,49,.18); }
   select option { background: #1c2230; }
 
+  /* ── Dropdown customizado (substitui a lista nativa do sistema) ── */
+  .cs-wrap { position: relative; width: 100%; }
+  .escala-editor-row .cs-wrap, .dash-filter-row .cs-wrap { flex: 1; }
+  select.cs-native { position: absolute; inset: 0; opacity: 0; pointer-events: none; z-index: -1; }
+  .cs-trigger {
+    width: 100%; background: var(--input-bg); border: 1.5px solid var(--border); border-radius: 10px;
+    color: var(--text); font-family: 'Nunito', sans-serif; font-size: .92rem; padding: 14px 38px 14px 14px;
+    outline: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    text-align: left; transition: border-color .2s, box-shadow .2s; position: relative;
+  }
+  .cs-trigger:disabled { opacity: .55; cursor: default; }
+  .cs-trigger.open, .cs-trigger:focus-visible { border-color: var(--accent1); box-shadow: 0 0 0 3px rgba(247,183,49,.18); }
+  .cs-trigger .cs-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .cs-trigger .cs-label.placeholder { color: #6b7690; }
+  .cs-trigger .cs-chevron { flex-shrink: 0; width: 12px; height: 8px; color: var(--muted); transition: transform .2s ease; }
+  .cs-trigger.open .cs-chevron { transform: rotate(180deg); color: var(--accent1); }
+
+  .cs-panel {
+    position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 500;
+    background: var(--card); border: 1.5px solid var(--accent1); border-radius: 12px;
+    box-shadow: 0 14px 36px rgba(0,0,0,.55); max-height: 0; opacity: 0; overflow: hidden;
+    transform: translateY(-6px); transition: max-height .22s ease, opacity .18s ease, transform .18s ease;
+    pointer-events: none;
+  }
+  .cs-panel.open { max-height: min(52vh, 330px); opacity: 1; transform: translateY(0); pointer-events: all; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .cs-search-wrap { position: sticky; top: 0; padding: 8px; background: var(--card); border-bottom: 1px solid var(--border); z-index: 2; }
+  .cs-search {
+    width: 100%; background: var(--input-bg); border: 1.5px solid var(--border); border-radius: 9px;
+    color: var(--text); font-family: 'Nunito', sans-serif; font-size: .84rem; padding: 10px 12px; outline: none;
+  }
+  .cs-search:focus { border-color: var(--accent1); }
+  .cs-list { padding: 4px 0; }
+  .cs-option {
+    padding: 12px 16px; font-size: .86rem; color: var(--text); cursor: pointer; display: flex;
+    align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid rgba(255,255,255,.045);
+    transition: background .12s;
+  }
+  .cs-option:last-child { border-bottom: none; }
+  .cs-option:hover, .cs-option.hl { background: rgba(247,183,49,.1); }
+  .cs-option.selected { color: var(--accent1); font-weight: 700; background: rgba(247,183,49,.06); }
+  .cs-option.disabled { color: var(--muted); pointer-events: none; opacity: .5; }
+  .cs-option .cs-check { color: var(--accent1); font-size: .8rem; opacity: 0; flex-shrink: 0; }
+  .cs-option.selected .cs-check { opacity: 1; }
+  .cs-empty { padding: 20px 16px; text-align: center; color: var(--muted); font-size: .82rem; }
+  .cs-list::-webkit-scrollbar, .cs-panel::-webkit-scrollbar { width: 6px; }
+  .cs-list::-webkit-scrollbar-thumb, .cs-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
   .field-hint { margin-top: 3px; font-size: .68rem; color: var(--muted); min-height: 0; opacity: 0; transition: opacity .2s; }
   .field-hint.visible { opacity: 1; }
 
@@ -4760,6 +4807,168 @@ var AlertasModule = (function () {
   setInterval(checkAlertas, 60000);
 
   return { refresh: refresh, calcularPendencias: calcularPendencias, recheckImediato: recheckImediato };
+}());
+</script>
+
+<script>
+/* ── Dropdown customizado (skin moderno sobre os <select> nativos) ──
+   Não altera nenhuma lógica existente: mantém o <select> real no DOM
+   (oculto), sincronizando value/options/change com a UI nova. Todo o
+   código que já faz getElementById(...).value, .addEventListener('change')
+   ou popula <option> continua funcionando sem nenhuma mudança. */
+(function () {
+  function enhance(sel) {
+    if (sel.dataset.csEnhanced) return;
+    sel.dataset.csEnhanced = '1';
+
+    var wrap = document.createElement('div');
+    wrap.className = 'cs-wrap';
+    sel.parentNode.insertBefore(wrap, sel);
+    wrap.appendChild(sel);
+    sel.classList.add('cs-native');
+    sel.tabIndex = -1;
+
+    var trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'cs-trigger';
+    trigger.innerHTML = '<span class="cs-label"></span>' +
+      '<svg class="cs-chevron" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
+    wrap.appendChild(trigger);
+
+    var panel = document.createElement('div');
+    panel.className = 'cs-panel';
+    wrap.appendChild(panel);
+
+    var listEl, searchInput;
+
+    function buildPanel() {
+      panel.innerHTML = '';
+      var opts = Array.prototype.slice.call(sel.options);
+      searchInput = null;
+      if (opts.length > 8) {
+        var searchWrap = document.createElement('div');
+        searchWrap.className = 'cs-search-wrap';
+        searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.className = 'cs-search';
+        searchInput.placeholder = '\uD83D\uDD0D Buscar…';
+        searchWrap.appendChild(searchInput);
+        panel.appendChild(searchWrap);
+        searchInput.addEventListener('click', function (e) { e.stopPropagation(); });
+        searchInput.addEventListener('input', function () {
+          var q = searchInput.value.toLowerCase().trim();
+          renderOptions(!q ? opts : opts.filter(function (o) { return o.textContent.toLowerCase().indexOf(q) !== -1; }));
+        });
+      }
+      listEl = document.createElement('div');
+      listEl.className = 'cs-list';
+      panel.appendChild(listEl);
+      renderOptions(opts);
+    }
+
+    function renderOptions(opts) {
+      listEl.innerHTML = '';
+      if (!opts.length) {
+        var empty = document.createElement('div');
+        empty.className = 'cs-empty';
+        empty.textContent = 'Nenhum resultado encontrado';
+        listEl.appendChild(empty);
+        return;
+      }
+      opts.forEach(function (o) {
+        var item = document.createElement('div');
+        item.className = 'cs-option' + (o.disabled ? ' disabled' : '') + (o.value === sel.value ? ' selected' : '');
+        var span = document.createElement('span');
+        span.className = 'cs-option-text';
+        span.textContent = o.textContent;
+        var chk = document.createElement('span');
+        chk.className = 'cs-check';
+        chk.innerHTML = '&#10003;';
+        item.appendChild(span);
+        item.appendChild(chk);
+        item.addEventListener('click', function () {
+          if (o.disabled) return;
+          sel.value = o.value;
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+          closePanel();
+        });
+        listEl.appendChild(item);
+      });
+    }
+
+    function updateLabel() {
+      var current = sel.options[sel.selectedIndex];
+      var label = trigger.querySelector('.cs-label');
+      label.textContent = current ? current.textContent : '';
+      label.classList.toggle('placeholder', !sel.value);
+    }
+
+    function openPanel() {
+      if (wrap.classList.contains('cs-open')) return;
+      document.querySelectorAll('.cs-wrap.cs-open').forEach(function (w) { if (w !== wrap) closeWrap(w); });
+      buildPanel();
+      wrap.classList.add('cs-open');
+      trigger.classList.add('open');
+      panel.classList.add('open');
+      var selOpt = panel.querySelector('.cs-option.selected');
+      if (selOpt) setTimeout(function () { selOpt.scrollIntoView({ block: 'nearest' }); }, 0);
+      if (searchInput) setTimeout(function () { searchInput.focus(); }, 60);
+    }
+    function closePanel() { closeWrap(wrap); }
+    function closeWrap(w) {
+      w.classList.remove('cs-open');
+      var t = w.querySelector('.cs-trigger'), p = w.querySelector('.cs-panel');
+      if (t) t.classList.remove('open');
+      if (p) p.classList.remove('open');
+    }
+
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (sel.disabled) return;
+      if (wrap.classList.contains('cs-open')) closePanel(); else openPanel();
+    });
+    trigger.disabled = sel.disabled;
+
+    sel.addEventListener('change', updateLabel);
+
+    var mo = new MutationObserver(function () {
+      trigger.disabled = sel.disabled;
+      updateLabel();
+      if (wrap.classList.contains('cs-open')) buildPanel();
+    });
+    mo.observe(sel, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled'] });
+
+    updateLabel();
+  }
+
+  function enhanceAll() {
+    document.querySelectorAll('select').forEach(enhance);
+  }
+
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('.cs-wrap')) return;
+    document.querySelectorAll('.cs-wrap.cs-open').forEach(function (w) {
+      w.classList.remove('cs-open');
+      var t = w.querySelector('.cs-trigger'), p = w.querySelector('.cs-panel');
+      if (t) t.classList.remove('open');
+      if (p) p.classList.remove('open');
+    });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.cs-wrap.cs-open').forEach(function (w) {
+        w.classList.remove('cs-open');
+        var t = w.querySelector('.cs-trigger'), p = w.querySelector('.cs-panel');
+        if (t) t.classList.remove('open');
+        if (p) p.classList.remove('open');
+      });
+    }
+  });
+
+  // Cobre selects já presentes no HTML e quaisquer outros criados/populados depois (modais, listas dinâmicas)
+  enhanceAll();
+  new MutationObserver(enhanceAll).observe(document.body, { childList: true, subtree: true });
 }());
 </script>
 
