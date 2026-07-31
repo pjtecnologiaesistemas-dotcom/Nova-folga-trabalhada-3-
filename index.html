@@ -549,6 +549,16 @@
   .modal-box.wide .modal-title { text-align: left; }
 
   /* Bico Fixo */
+  .bico-form-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 2px; }
+  .bico-form-sub { font-size: .78rem; color: var(--muted); margin: -8px 0 18px; }
+  .bico-form-grid { display: grid; grid-template-columns: 1fr; gap: 0 18px; }
+  .bico-form-grid .field-span2 { grid-column: 1 / -1; }
+  @media (min-width: 600px) {
+    .bico-form-grid { grid-template-columns: 1fr 1fr; }
+  }
+  .bico-lista-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .bico-lista-head h2 { margin-bottom: 0 !important; }
+
   .bico-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
   .bico-summary-card {
     position: relative; overflow: hidden; border-radius: var(--radius); padding: 18px 14px; text-align: center;
@@ -741,6 +751,7 @@
     <button type="button" class="tab-btn rail-item" data-tab="tab-geral"><span class="rail-icon">&#x1F30D;</span><span class="rail-label">Geral</span></button>
     <button type="button" class="tab-btn rail-item" data-tab="tab-historico"><span class="rail-icon">&#x1F4DC;</span><span class="rail-label">Histórico</span></button>
     <button type="button" class="tab-btn rail-item" data-tab="tab-bico"><span class="rail-icon">&#x1F4A0;</span><span class="rail-label">Bico Fixo</span></button>
+    <button type="button" class="tab-btn rail-item" data-tab="tab-bico-lista"><span class="rail-icon">&#x1F4CB;</span><span class="rail-label">Lançamentos</span></button>
     <button type="button" class="tab-btn rail-item" data-tab="tab-pagamentos"><span class="rail-icon">&#x1F4B3;</span><span class="rail-label">Pagamentos</span></button>
     <button type="button" class="tab-btn rail-item" data-tab="tab-alertas"><span class="rail-icon">&#x1F514;</span><span class="rail-label">Alertas</span></button>
   </div>
@@ -1083,9 +1094,84 @@
     <div class="hist-list" id="histLista"><p class="empty-state">Nenhum registro encontrado.</p></div>
   </div>
 
-  <!-- ABA: BICO FIXO -->
+  <!-- ABA: BICO FIXO (lançamento) -->
   <div class="tab-panel hidden" id="tab-bico">
     <div class="cadastro-section">
+      <div class="bico-form-head">
+        <h2 class="col-purple" id="bicoFormTitulo" style="margin-bottom:0;">&#x1F4A0; Novo Bico Fixo</h2>
+        <button type="button" class="btn-horario-toggle" id="btnVerLancamentosBico">&#x1F4CB; Ver lançamentos</button>
+      </div>
+      <p class="bico-form-sub">Cadastre um colaborador fixo, recorrente, em um posto.</p>
+      <form id="bicoForm" novalidate class="bico-form-grid">
+        <div class="field">
+          <div class="field-label col-green"><span class="dot bg-green"></span>Colaborador</div>
+          <select id="bicoColaborador" required><option value="">-- Selecione --</option></select>
+        </div>
+        <div class="field">
+          <div class="field-label col-amber"><span class="dot bg-amber"></span>Posto</div>
+          <select id="bicoPosto" required><option value="">-- Selecione --</option></select>
+        </div>
+        <div class="field field-span2">
+          <div class="field-label col-blue"><span class="dot bg-blue"></span>Horário</div>
+          <select id="bicoHorario" required>
+            <option value="">-- Selecione --</option>
+            <option>06:00 – 18:00</option><option>18:00 – 06:00</option><option>18:00 – 02:00</option>
+          </select>
+          <button type="button" class="btn-horario-toggle" id="btn-toggle-horario-bico">&#x2795; Adicionar outro horário</button>
+          <div class="horario-custom-wrap" id="horario-custom-bico">
+            <div class="horario-custom-row">
+              <input type="text" id="horario-custom-input-bico" placeholder="Ex: 05:00 – 11:00 ou Escala Especial" maxlength="40">
+              <button type="button" class="btn-horario-add" id="btn-horario-save-bico">&#x2714; Salvar</button>
+            </div>
+            <div class="horario-saved-list" id="horario-saved-bico"></div>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label col-blue"><span class="dot bg-blue"></span>Data de início</div>
+          <input type="date" id="bicoDataInicio" required>
+          <p style="font-size:.72rem;color:var(--muted);margin-top:6px;">Data em que o bico começa a valer de fato — não a data em que você está cadastrando.</p>
+        </div>
+        <div class="field">
+          <div class="field-label col-green"><span class="dot bg-green"></span>Valor por diária (R$)</div>
+          <div class="input-prefix"><span>R$</span><input type="number" id="bicoValor" min="0" step="0.01" placeholder="0,00"></div>
+        </div>
+        <div class="field field-span2">
+          <div class="field-label col-purple"><span class="dot bg-purple"></span>Dias da semana</div>
+          <div class="day-chip-row" id="bicoDias">
+            <button type="button" class="day-chip" data-dia="DOM">Dom</button>
+            <button type="button" class="day-chip" data-dia="SEG">Seg</button>
+            <button type="button" class="day-chip" data-dia="TER">Ter</button>
+            <button type="button" class="day-chip" data-dia="QUA">Qua</button>
+            <button type="button" class="day-chip" data-dia="QUI">Qui</button>
+            <button type="button" class="day-chip" data-dia="SEX">Sex</button>
+            <button type="button" class="day-chip" data-dia="SAB">Sáb</button>
+          </div>
+        </div>
+        <div class="field field-span2">
+          <div class="field-label col-blue"><span class="dot bg-blue"></span>Observação <span style="font-size:.7rem;color:var(--muted);font-weight:400;text-transform:none;">(opcional)</span></div>
+          <textarea id="bicoObservacao" maxlength="300"></textarea>
+        </div>
+        <div class="field field-span2">
+          <div class="bico-toggle-row">
+            <input type="checkbox" id="bicoAtivo" checked>
+            <label for="bicoAtivo">Ativo</label>
+          </div>
+        </div>
+        <div class="btn-row field-span2">
+          <button type="button" class="btn btn-clear hidden" id="bicoCancelarEdicao">&#x2715; Cancelar</button>
+          <button type="submit" class="btn btn-submit purple" id="bicoSubmitBtn">&#x2795; Adicionar Bico Fixo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ABA: BICO FIXO — LANÇAMENTOS (resumo, filtros e lista dos bicos cadastrados) -->
+  <div class="tab-panel hidden" id="tab-bico-lista">
+    <div class="cadastro-section">
+      <div class="bico-lista-head">
+        <h2 class="col-purple">&#x1F4CB; Lançamentos de Bico Fixo</h2>
+        <button type="button" class="btn btn-submit purple" id="btnNovoBicoFixo">&#x2795; Novo Bico Fixo</button>
+      </div>
       <div class="hist-filters-row">
         <div>
           <label>Período</label>
@@ -1108,70 +1194,6 @@
         <div class="bico-summary-value col-purple" id="bicoValorMensal">R$ 0,00</div>
         <div class="bico-summary-label" id="bicoValorMensalLabel">&#x2705; Lançado (real)</div>
       </div>
-    </div>
-
-    <div class="cadastro-section">
-      <h2 class="col-purple" id="bicoFormTitulo">&#x1F4A0; Novo Bico Fixo</h2>
-      <form id="bicoForm" novalidate>
-        <div class="field">
-          <div class="field-label col-green"><span class="dot bg-green"></span>Colaborador</div>
-          <select id="bicoColaborador" required><option value="">-- Selecione --</option></select>
-        </div>
-        <div class="field">
-          <div class="field-label col-amber"><span class="dot bg-amber"></span>Posto</div>
-          <select id="bicoPosto" required><option value="">-- Selecione --</option></select>
-        </div>
-        <div class="field">
-          <div class="field-label col-blue"><span class="dot bg-blue"></span>Horário</div>
-          <select id="bicoHorario" required>
-            <option value="">-- Selecione --</option>
-            <option>06:00 – 18:00</option><option>18:00 – 06:00</option><option>18:00 – 02:00</option>
-          </select>
-          <button type="button" class="btn-horario-toggle" id="btn-toggle-horario-bico">&#x2795; Adicionar outro horário</button>
-          <div class="horario-custom-wrap" id="horario-custom-bico">
-            <div class="horario-custom-row">
-              <input type="text" id="horario-custom-input-bico" placeholder="Ex: 05:00 – 11:00 ou Escala Especial" maxlength="40">
-              <button type="button" class="btn-horario-add" id="btn-horario-save-bico">&#x2714; Salvar</button>
-            </div>
-            <div class="horario-saved-list" id="horario-saved-bico"></div>
-          </div>
-        </div>
-        <div class="field">
-          <div class="field-label col-blue"><span class="dot bg-blue"></span>Data de início</div>
-          <input type="date" id="bicoDataInicio" required>
-          <p style="font-size:.72rem;color:var(--muted);margin-top:6px;">Data em que o bico começa a valer de fato — não a data em que você está cadastrando.</p>
-        </div>
-        <div class="field">
-          <div class="field-label col-purple"><span class="dot bg-purple"></span>Dias da semana</div>
-          <div class="day-chip-row" id="bicoDias">
-            <button type="button" class="day-chip" data-dia="DOM">Dom</button>
-            <button type="button" class="day-chip" data-dia="SEG">Seg</button>
-            <button type="button" class="day-chip" data-dia="TER">Ter</button>
-            <button type="button" class="day-chip" data-dia="QUA">Qua</button>
-            <button type="button" class="day-chip" data-dia="QUI">Qui</button>
-            <button type="button" class="day-chip" data-dia="SEX">Sex</button>
-            <button type="button" class="day-chip" data-dia="SAB">Sáb</button>
-          </div>
-        </div>
-        <div class="field">
-          <div class="field-label col-green"><span class="dot bg-green"></span>Valor por diária (R$)</div>
-          <div class="input-prefix"><span>R$</span><input type="number" id="bicoValor" min="0" step="0.01" placeholder="0,00"></div>
-        </div>
-        <div class="field">
-          <div class="field-label col-blue"><span class="dot bg-blue"></span>Observação <span style="font-size:.7rem;color:var(--muted);font-weight:400;text-transform:none;">(opcional)</span></div>
-          <textarea id="bicoObservacao" maxlength="300"></textarea>
-        </div>
-        <div class="field">
-          <div class="bico-toggle-row">
-            <input type="checkbox" id="bicoAtivo" checked>
-            <label for="bicoAtivo">Ativo</label>
-          </div>
-        </div>
-        <div class="btn-row">
-          <button type="button" class="btn btn-clear hidden" id="bicoCancelarEdicao">&#x2715; Cancelar</button>
-          <button type="submit" class="btn btn-submit purple" id="bicoSubmitBtn">&#x2795; Adicionar Bico Fixo</button>
-        </div>
-      </form>
     </div>
 
     <div class="bico-filters-row">
@@ -3500,7 +3522,13 @@ var BicoFixoModule = (function () {
     if (!b) return;
     editandoId = id;
 
+    // O formulário agora vive na aba "tab-bico" — troca para lá primeiro
+    // (isso já dispara refresh()/popularSelects() via FT_onTabShow) e só
+    // depois preenche os valores específicos deste bico.
+    var btnAbaBico = document.querySelector('.tab-btn[data-tab="tab-bico"]');
+    if (btnAbaBico) btnAbaBico.click();
     popularSelects();
+
     document.getElementById('bicoColaborador').value = b.colaborador || '';
     document.getElementById('bicoPosto').value = b.posto || '';
     document.getElementById('bicoHorario').value = b.horario || '';
@@ -3657,18 +3685,37 @@ var BicoFixoModule = (function () {
     if (delBtn) excluirBico(delBtn.dataset.id);
   });
 
+  // Atalhos de navegação entre as duas abas (formulário ⇄ lançamentos)
+  var btnVerLancamentosBico = document.getElementById('btnVerLancamentosBico');
+  if (btnVerLancamentosBico) {
+    btnVerLancamentosBico.addEventListener('click', function () {
+      var btnLista = document.querySelector('.tab-btn[data-tab="tab-bico-lista"]');
+      if (btnLista) btnLista.click();
+    });
+  }
+  var btnNovoBicoFixo = document.getElementById('btnNovoBicoFixo');
+  if (btnNovoBicoFixo) {
+    btnNovoBicoFixo.addEventListener('click', function () {
+      limparForm();
+      var btnForm = document.querySelector('.tab-btn[data-tab="tab-bico"]');
+      if (btnForm) btnForm.click();
+    });
+  }
+
   // Encadeia com o hook de troca de aba
   var prevTabShow = window.FT_onTabShow;
   window.FT_onTabShow = function (tab) {
     if (typeof prevTabShow === 'function') prevTabShow(tab);
-    if (tab === 'tab-bico') refresh();
+    if (tab === 'tab-bico' || tab === 'tab-bico-lista') refresh();
   };
 
   // Encadeia com atualizações remotas (Firebase)
   var prevRemoteUpdate3 = window.FT_onRemoteUpdate;
   window.FT_onRemoteUpdate = function (key, value) {
     if (typeof prevRemoteUpdate3 === 'function') prevRemoteUpdate3(key, value);
-    if (key === LS_BICO && !document.getElementById('tab-bico').classList.contains('hidden')) {
+    var abaFormularioVisivel = !document.getElementById('tab-bico').classList.contains('hidden');
+    var abaListaVisivel = !document.getElementById('tab-bico-lista').classList.contains('hidden');
+    if (key === LS_BICO && (abaFormularioVisivel || abaListaVisivel)) {
       bicos = value || []; renderSummary(); renderLista();
     }
   };
