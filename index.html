@@ -549,12 +549,17 @@
   .modal-box.wide .modal-title { text-align: left; }
 
   /* Bico Fixo */
-  .bico-form-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 2px; }
-  .bico-form-sub { font-size: .78rem; color: var(--muted); margin: -8px 0 18px; }
+  .bico-form-head { display: flex; align-items: center; justify-content: space-between; gap: 10px 14px; flex-wrap: wrap; margin-bottom: 10px; }
+  .bico-form-head h2 { flex: 1 1 auto; min-width: 0; }
+  .bico-form-head .btn-horario-toggle { width: auto; margin-top: 0; flex-shrink: 0; white-space: nowrap; }
+  .bico-form-sub { font-size: .78rem; color: var(--muted); margin: 0 0 18px; }
   .bico-form-grid { display: grid; grid-template-columns: 1fr; gap: 0 18px; }
   .bico-form-grid .field-span2 { grid-column: 1 / -1; }
   @media (min-width: 600px) {
     .bico-form-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 400px) {
+    .bico-form-head .btn-horario-toggle { flex: 1 1 100%; }
   }
   .bico-lista-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
   .bico-lista-head h2 { margin-bottom: 0 !important; }
