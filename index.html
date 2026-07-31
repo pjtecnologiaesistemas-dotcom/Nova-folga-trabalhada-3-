@@ -2016,7 +2016,20 @@ function fillSelect(id, items, preserve) {
     opt.textContent = item.nome;
     sel.appendChild(opt);
   });
-  if (prev) sel.value = prev;
+  if (prev) {
+    // Garante que o valor selecionado não se perca caso ele ainda não
+    // conste na lista recém-recarregada (ex.: sync do Firebase atrasado,
+    // item recém-criado, diferença de espaços). Sem isso, sel.value=prev
+    // falha em silêncio e o campo fica vazio mesmo parecendo preenchido.
+    var existe = Array.prototype.some.call(sel.options, function (o) { return o.value === prev; });
+    if (!existe) {
+      var optExtra = document.createElement('option');
+      optExtra.value = prev;
+      optExtra.textContent = prev;
+      sel.appendChild(optExtra);
+    }
+    sel.value = prev;
+  }
 }
 function fmtMoedaBR(v) { return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
 function fmtDataHoraBR(iso) {
@@ -3578,7 +3591,11 @@ var BicoFixoModule = (function () {
     var ativo = document.getElementById('bicoAtivo').checked;
 
     if (!colaborador || !posto || !horario) {
-      showToast('⚠️ Preencha colaborador, posto e horário.', 'error'); return;
+      var faltando = [];
+      if (!colaborador) faltando.push('colaborador');
+      if (!posto) faltando.push('posto');
+      if (!horario) faltando.push('horário');
+      showToast('⚠️ Preencha ' + faltando.join(', ') + '.', 'error'); return;
     }
     if (!dataInicio) {
       showToast('⚠️ Informe a data de início do bico.', 'error'); return;
