@@ -3231,6 +3231,7 @@ var BicoFixoModule = (function () {
   var LS_BICO = 'ft_bico_fixo';
   var editandoId = null;
   var diasSelecionados = [];
+  var dataInicioAlteradaManualmente = false;
 
   function loadStorage() {
     try { return JSON.parse(localStorage.getItem(LS_BICO) || '[]'); } catch (e) { return []; }
@@ -3500,7 +3501,7 @@ var BicoFixoModule = (function () {
 
   function refresh() {
     popularSelects(); renderSummary(); renderLista();
-    if (!editandoId && !document.getElementById('bicoDataInicio').value) {
+    if (!editandoId && !dataInicioAlteradaManualmente) {
       document.getElementById('bicoDataInicio').value = hojeISO();
     }
   }
@@ -3514,6 +3515,7 @@ var BicoFixoModule = (function () {
     document.getElementById('bicoForm').reset();
     document.getElementById('bicoAtivo').checked = true;
     document.getElementById('bicoDataInicio').value = hojeISO();
+    dataInicioAlteradaManualmente = false;
     diasSelecionados = [];
     renderDiaChips();
     editandoId = null;
@@ -3542,6 +3544,7 @@ var BicoFixoModule = (function () {
     document.getElementById('bicoObservacao').value = b.observacao || '';
     document.getElementById('bicoAtivo').checked = !!b.ativo;
     document.getElementById('bicoDataInicio').value = b.dataInicio || hojeISO();
+    dataInicioAlteradaManualmente = true;
     diasSelecionados = (b.dias || []).slice();
     renderDiaChips();
 
@@ -3677,6 +3680,7 @@ var BicoFixoModule = (function () {
   });
   document.getElementById('bicoForm').addEventListener('submit', submitForm);
   setupHorarioToggleBico();
+  document.getElementById('bicoDataInicio').addEventListener('input', function () { dataInicioAlteradaManualmente = true; });
   document.getElementById('bicoCancelarEdicao').addEventListener('click', limparForm);
   document.getElementById('bicoFiltroStatus').addEventListener('change', function () { renderSummary(); renderLista(); });
   document.getElementById('bicoFiltroPosto').addEventListener('change', function () { renderSummary(); renderLista(); });
