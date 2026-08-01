@@ -341,6 +341,13 @@
   .cs-trigger .cs-label.placeholder { color: #6b7690; }
   .cs-trigger .cs-chevron { flex-shrink: 0; width: 12px; height: 8px; color: var(--muted); transition: transform .2s ease; }
   .cs-trigger.open .cs-chevron { transform: rotate(180deg); color: var(--accent1); }
+  .cs-trigger .cs-clear {
+    display: none; flex-shrink: 0; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%; color: var(--muted);
+    font-size: .7rem; line-height: 1; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .cs-trigger .cs-clear.visible { display: flex; }
+  .cs-trigger .cs-clear:hover { background: rgba(255,255,255,.12); color: var(--text); }
 
   .cs-panel {
     position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 500;
@@ -1409,6 +1416,21 @@
 <div class="toast" id="toast"></div>
 
 <script>
+/* ════════════════════════════════════════════════════════════
+   UTIL — define o valor de um <select> programaticamente E
+   dispara 'change', para o skin de dropdown customizado (cs-wrap,
+   mais abaixo no arquivo) atualizar o texto exibido e o botão de
+   limpar (×). Sem isso, sel.value="" por JS some o valor real mas
+   o visual customizado fica "preso" na aparência antiga até a
+   página ser recarregada.
+   ════════════════════════════════════════════════════════════ */
+window.setSelectValue = function (id, value) {
+  var sel = document.getElementById(id);
+  if (!sel) return;
+  sel.value = value;
+  sel.dispatchEvent(new Event('change', { bubbles: true }));
+};
+
 /* ════════════════════════════════════════════════════════════
    MÓDULO -1 — TOMBSTONES (registro de exclusões, pra sincronizar
    remoções entre dispositivos sem que elas "ressuscitem" quando
@@ -2688,6 +2710,14 @@ var FTModule = (function () {
   document.getElementById('ftForm').addEventListener('submit', submitForm);
   document.getElementById('btnLimpar').addEventListener('click', function () {
     document.getElementById('ftForm').reset();
+    // Reset explícito + dispara 'change': alguns navegadores não restauram
+    // corretamente <select> populados via JS usando só form.reset(), e o
+    // skin de dropdown customizado só atualiza o texto exibido em 'change'.
+    ['posto', 'motivo', 'substituto', 'quemFaltou'].forEach(function (id) {
+      setSelectValue(id, '');
+    });
+    document.getElementById('observacao').value = '';
+    document.getElementById('valor').value = '';
     setDefaultDateTime();
     handleMotivoChange();
   });
@@ -3513,6 +3543,14 @@ var BicoFixoModule = (function () {
 
   function limparForm() {
     document.getElementById('bicoForm').reset();
+    // Reset explícito + dispara 'change': alguns navegadores não restauram
+    // corretamente <select> populados via JS usando só form.reset(), e o
+    // skin de dropdown customizado só atualiza o texto exibido em 'change'.
+    setSelectValue('bicoColaborador', '');
+    setSelectValue('bicoPosto', '');
+    setSelectValue('bicoHorario', '');
+    document.getElementById('bicoValor').value = '';
+    document.getElementById('bicoObservacao').value = '';
     document.getElementById('bicoAtivo').checked = true;
     document.getElementById('bicoDataInicio').value = hojeISO();
     dataInicioAlteradaManualmente = false;
@@ -3538,8 +3576,10 @@ var BicoFixoModule = (function () {
 
     document.getElementById('bicoColaborador').value = b.colaborador || '';
     document.getElementById('bicoPosto').value = b.posto || '';
-    document.getElementById('bicoHorario').value = b.horario || '';
     ensureHorarioInSelectBico(b.horario || '');
+    ['bicoColaborador', 'bicoPosto', 'bicoHorario'].forEach(function (id) {
+      document.getElementById(id).dispatchEvent(new Event('change', { bubbles: true }));
+    });
     document.getElementById('bicoValor').value = b.valor || '';
     document.getElementById('bicoObservacao').value = b.observacao || '';
     document.getElementById('bicoAtivo').checked = !!b.ativo;
@@ -4905,8 +4945,18 @@ var AlertasModule = (function () {
     trigger.type = 'button';
     trigger.className = 'cs-trigger';
     trigger.innerHTML = '<span class="cs-label"></span>' +
+      '<span class="cs-clear" title="Limpar seleção">&#10005;</span>' +
       '<svg class="cs-chevron" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
     wrap.appendChild(trigger);
+    var clearBtn = trigger.querySelector('.cs-clear');
+    clearBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (sel.disabled || !sel.value) return;
+      sel.value = '';
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      closePanel();
+    });
 
     var panel = document.createElement('div');
     panel.className = 'cs-panel';
@@ -4974,6 +5024,7 @@ var AlertasModule = (function () {
       var label = trigger.querySelector('.cs-label');
       label.textContent = current ? current.textContent : '';
       label.classList.toggle('placeholder', !sel.value);
+      clearBtn.classList.toggle('visible', !!sel.value && !sel.disabled);
     }
 
     function openPanel() {
