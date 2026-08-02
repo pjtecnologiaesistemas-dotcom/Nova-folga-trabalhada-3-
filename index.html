@@ -2201,11 +2201,11 @@ refreshTodosOsSelects();
   /* ── Exportação CSV ── */
   function exportarCSV() {
     if (!filtrados.length) { showToast('⚠️ Nenhum registro para exportar.', 'error'); return; }
-    var header = ['Tipo', 'Colaborador', 'Posto', 'Data', 'Horário', 'Motivo / Dias', 'Valor (R$)', 'Observação'];
+    var header = ['Tipo', 'Colaborador', 'Colaborador Ausente', 'Posto', 'Data', 'Horário', 'Motivo / Dias', 'Valor (R$)', 'Observação'];
     var linhas = filtrados.map(function (r) {
       return [
         r.tipoKey === 'ft' ? 'FT Pontual' : 'Bico Fixo',
-        r.colaborador, r.posto,
+        r.colaborador, r.ausenteNome || '', r.posto,
         formatarDataBR(r.dataObj, r.comHora),
         r.horario, r.detalhe,
         (r.valor || 0).toFixed(2).replace('.', ','),
@@ -2228,6 +2228,7 @@ refreshTodosOsSelects();
       return {
         'Tipo': r.tipoKey === 'ft' ? 'FT Pontual' : 'Bico Fixo',
         'Colaborador': r.colaborador,
+        'Colaborador Ausente': r.ausenteNome || '',
         'Posto': r.posto,
         'Data': formatarDataBR(r.dataObj, r.comHora),
         'Horário': r.horario,
@@ -2237,7 +2238,7 @@ refreshTodosOsSelects();
       };
     });
     var ws = XLSX.utils.json_to_sheet(dados);
-    ws['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 24 }, { wch: 12 }, { wch: 32 }];
+    ws['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 22 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 24 }, { wch: 12 }, { wch: 32 }];
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Histórico');
     XLSX.writeFile(wb, 'historico_ft_' + carimboArquivo() + '.xlsx');
@@ -2261,7 +2262,7 @@ refreshTodosOsSelects();
     var linhas = filtrados.map(function (r) {
       return [
         r.tipoKey === 'ft' ? 'FT Pontual' : 'Bico Fixo',
-        r.colaborador, r.posto,
+        r.colaborador, r.ausenteNome || '—', r.posto,
         formatarDataBR(r.dataObj, r.comHora),
         r.horario, r.detalhe,
         formatarValor(r.valor),
@@ -2270,13 +2271,13 @@ refreshTodosOsSelects();
     });
 
     doc.autoTable({
-      head: [['Tipo', 'Colaborador', 'Posto', 'Data', 'Horário', 'Motivo / Dias', 'Valor', 'Observação']],
+      head: [['Tipo', 'Colaborador', 'Ausente', 'Posto', 'Data', 'Horário', 'Motivo / Dias', 'Valor', 'Observação']],
       body: linhas,
       startY: 60,
       styles: { fontSize: 8, cellPadding: 5, overflow: 'linebreak' },
       headStyles: { fillColor: [247, 183, 49], textColor: [13, 17, 23], fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [245, 245, 245] },
-      columnStyles: { 7: { cellWidth: 170 } }
+      columnStyles: { 8: { cellWidth: 150 } }
     });
 
     doc.save('historico_ft_' + carimboArquivo() + '.pdf');
