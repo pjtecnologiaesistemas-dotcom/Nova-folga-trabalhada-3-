@@ -1663,8 +1663,19 @@ refreshTodosOsSelects();
   var horarioSaveBtn = document.getElementById('btn-horario-save-bico');
   var horarioSavedList = document.getElementById('horario-saved-bico');
   var diasWrap = document.getElementById('bicoDias');
+  var dataInicioInput = document.getElementById('bicoDataInicio');
   var btnLimpar = document.getElementById('btnLimparBico');
   var btnRegistrar = document.getElementById('btnRegistrarBico');
+
+  /* Preenche a Data de início automaticamente com o dia atual sempre que
+     o formulário é aberto/limpo — o campo continua editável normalmente
+     caso o usuário precise registrar para outra data. */
+  function setDataInicioHoje() {
+    var d = new Date();
+    var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    dataInicioInput.value = iso;
+  }
+  setDataInicioHoje();
 
   horarioToggleBtn.addEventListener('click', function () {
     horarioCustomWrap.classList.toggle('visible');
@@ -1730,6 +1741,7 @@ refreshTodosOsSelects();
     document.getElementById('bicoAtivo').checked = true;
     horarioCustomWrap.classList.remove('visible');
     diasWrap.querySelectorAll('.day-chip.active').forEach(function (c) { c.classList.remove('active'); });
+    setDataInicioHoje();
   }
   btnLimpar.addEventListener('click', limparForm);
 
