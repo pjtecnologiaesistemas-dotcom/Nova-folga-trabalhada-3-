@@ -552,7 +552,7 @@
   /* ── Alerta flutuante de pendências (não bloqueante) ── */
   .floating-alerts { position: fixed; inset: 0; z-index: 9998; display: flex; align-items: center; justify-content: center; padding: 20px; pointer-events: none; opacity: 0; transition: opacity .2s; }
   .floating-alerts.has-alert { background: rgba(0,0,0,.72); pointer-events: all; opacity: 1; }
-  .floating-alert-card { pointer-events: all; background: var(--card); border: 2px solid var(--danger); border-radius: 18px; box-shadow: 0 12px 48px rgba(252,92,101,.35); padding: 30px 24px 24px; max-width: 440px; width: 100%; max-height: 88vh; overflow-y: auto; animation: floatIn .3s ease; }
+  .floating-alert-card { pointer-events: all; background: linear-gradient(160deg, #3d2a14 0%, #26190c 100%); border: 2px solid var(--danger); border-radius: 18px; box-shadow: 0 12px 48px rgba(252,92,101,.35); padding: 30px 24px 24px; max-width: 440px; width: 100%; max-height: 88vh; overflow-y: auto; animation: floatIn .3s ease; }
   @keyframes floatIn { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
   .floating-alert-icon { font-size: 2.8rem; text-align: center; margin-bottom: 14px; }
   .floating-alert-head { display: block; text-align: center; font-family: 'Exo 2', sans-serif; font-weight: 800; font-size: 1.08rem; letter-spacing: .3px; text-transform: uppercase; color: var(--danger); margin-bottom: 14px; line-height: 1.35; }
@@ -564,7 +564,7 @@
   .fa-btn-ciente { background: var(--danger); color: #fff; border: none; }
   .fa-link-config { display: block; text-align: center; font-size: .82rem; color: var(--accent3); margin-top: 14px; text-decoration: none; cursor: pointer; }
   .pendente-periodo-titulo { font-family: 'Exo 2', sans-serif; font-weight: 800; font-size: .8rem; letter-spacing: .5px; text-transform: uppercase; color: var(--accent3); margin: 12px 0 8px; text-align: center; }
-  .pendente-card { display: flex; align-items: center; gap: 10px; background: rgba(252,92,101,.08); border: 1px solid rgba(252,92,101,.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 9px; }
+  .pendente-card { display: flex; align-items: center; gap: 10px; background: rgba(252,92,101,.14); border: 1px solid rgba(252,92,101,.35); border-radius: 10px; padding: 12px 14px; margin-bottom: 9px; }
   .pendente-card .pendente-icon { font-size: 1.25rem; flex-shrink: 0; }
   .pendente-card .pendente-info { flex: 1; min-width: 0; }
   .pendente-card .pendente-posto { font-weight: 700; color: var(--danger); font-size: .96rem; }
