@@ -1381,12 +1381,22 @@ var motivos = loadStorage(LS_MOTIVOS);
   }
 }());
 
+/* FT Pontual não pode usar "Bico Fixo" como motivo — esse tipo de
+   lançamento já tem sua própria aba dedicada. Filtramos essa opção
+   apenas na exibição do campo Motivo (o cadastro geral de Motivos,
+   em Cadastros, continua intacto, sem afetar dados já sincronizados). */
+function motivosParaFt() {
+  return motivos.filter(function (m) {
+    return String(m.nome || '').trim().toLowerCase() !== 'bico fixo';
+  });
+}
+
 function refreshMotivoSelect() {
   var sel = document.getElementById('motivo');
   if (!sel) return;
   var atual = sel.value;
   sel.innerHTML = '<option value="">-- Selecione --</option>' +
-    sortAlpha(motivos).map(function (m) { return '<option value="' + escHtml(m.nome) + '">' + escHtml(m.nome) + '</option>'; }).join('') +
+    sortAlpha(motivosParaFt()).map(function (m) { return '<option value="' + escHtml(m.nome) + '">' + escHtml(m.nome) + '</option>'; }).join('') +
     '<option value="__outro__">&#x270F;&#xFE0F; Outro (digitar)</option>';
   if (Array.prototype.some.call(sel.options, function (o) { return o.value === atual; })) sel.value = atual;
   sel.dispatchEvent(new Event('change'));
@@ -2749,7 +2759,7 @@ refreshTodosOsSelects();
 
   function popularMotivoSelect(atual) {
     ftMotivo.innerHTML = '<option value="">-- Selecione --</option>' +
-      sortAlpha(motivos).map(function (m) { return '<option value="' + escHtml(m.nome) + '">' + escHtml(m.nome) + '</option>'; }).join('') +
+      sortAlpha(motivosParaFt()).map(function (m) { return '<option value="' + escHtml(m.nome) + '">' + escHtml(m.nome) + '</option>'; }).join('') +
       '<option value="__outro__">&#x270F;&#xFE0F; Outro (digitar)</option>';
     var existeOpcao = Array.prototype.some.call(ftMotivo.options, function (o) { return o.value === atual; });
     ftMotivo.value = existeOpcao ? atual : '__outro__';
