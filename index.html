@@ -3299,10 +3299,13 @@ var AlertasModule = (function () {
   function persist(key, data) { try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) {} }
 
   var config = loadJSON(LS_CONFIG, { diaAtivo: true, noiteAtivo: true });
+  if (typeof config.diaAtivo !== 'boolean') config.diaAtivo = true;
+  if (typeof config.noiteAtivo !== 'boolean') config.noiteAtivo = true;
   var postosMonitorados = loadJSON(LS_POSTOS, []);
   var ciente = loadJSON(LS_CIENTE, {});
 
   function saveConfig() { persist(LS_CONFIG, config); }
+  saveConfig();
   function savePostos() {
     persist(LS_POSTOS, postosMonitorados);
     if (window.FTCloud) window.FTCloud.push(LS_POSTOS, postosMonitorados);
