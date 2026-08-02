@@ -11,10 +11,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FT">
-<link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192-4.png">
-<link rel="icon" type="image/png" sizes="512x512" href="icon-512-4.png">
-<link rel="apple-touch-icon" href="icon-192-4.png">
 
 <!-- ── Bibliotecas de exportação (PDF / Excel) ── -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1240,7 +1236,7 @@ var FTCloud = (function () {
   };
 
   var COLECAO = 'ft_app_data';
-  var CHAVES_SINCRONIZADAS = ['ft_postos', 'ft_colaboradores', 'ft_motivos', 'ft_lancamentos', 'ft_bicos', 'ft_horarios_extra'];
+  var CHAVES_SINCRONIZADAS = ['ft_postos', 'ft_colaboradores', 'ft_motivos', 'ft_lancamentos', 'ft_bicos', 'ft_horarios_extra', 'ft_alertas_postos_v2'];
 
   var db = null;
   var pronto = false;
@@ -1316,6 +1312,9 @@ var FTCloud = (function () {
     if (chave === 'ft_postos') { postos = valor || []; refreshTodosOsSelects(); }
     if (chave === 'ft_colaboradores') { colaboradores = valor || []; refreshTodosOsSelects(); }
     if (chave === 'ft_motivos') { motivos = valor || []; refreshMotivoSelect(); }
+    if (chave === 'ft_alertas_postos_v2' && window.AlertasModule && typeof window.AlertasModule.aplicarRemoto === 'function') {
+      window.AlertasModule.aplicarRemoto(valor);
+    }
 
     if (typeof window.renderHistoricoTab === 'function') window.renderHistoricoTab();
     if (typeof window.renderPagamentosTab === 'function') window.renderPagamentosTab();
@@ -3304,7 +3303,14 @@ var AlertasModule = (function () {
   var ciente = loadJSON(LS_CIENTE, {});
 
   function saveConfig() { persist(LS_CONFIG, config); }
-  function savePostos() { persist(LS_POSTOS, postosMonitorados); }
+  function savePostos() {
+    persist(LS_POSTOS, postosMonitorados);
+    if (window.FTCloud) window.FTCloud.push(LS_POSTOS, postosMonitorados);
+  }
+  function aplicarRemoto(valor) {
+    postosMonitorados = (valor || []).map(garantirEstrutura);
+    renderPostosMonitorados(); renderInfoBox(); popularSelectEscala();
+  }
   function saveCiente() { persist(LS_CIENTE, ciente); }
 
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -3808,7 +3814,7 @@ var AlertasModule = (function () {
   setTimeout(checkAlertas, 4000);
   setInterval(checkAlertas, 60000);
 
-  return { refresh: refresh, calcularPendencias: calcularPendencias, recheckImediato: recheckImediato };
+  return { refresh: refresh, calcularPendencias: calcularPendencias, recheckImediato: recheckImediato, aplicarRemoto: aplicarRemoto };
 }());
 
 /* ════════════════════════════════════════════════════════════
@@ -4176,16 +4182,6 @@ var LembretesModule = (function () {
   enhanceAll();
   new MutationObserver(enhanceAll).observe(document.body, { childList: true, subtree: true });
 }());
-</script>
-
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function () {
-    navigator.serviceWorker.register('sw.js').catch(function (err) {
-      console.error('Falha ao registrar Service Worker:', err);
-    });
-  });
-}
 </script>
 
 </body>
