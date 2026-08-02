@@ -695,6 +695,11 @@
           </div>
         </div>
 
+        <div class="field hidden" id="campoColaboradorAusente">
+          <div class="field-label col-danger"><span class="dot bg-danger"></span>&#x1F464; <span id="labelColaboradorAusente">Colaborador Ausente</span></div>
+          <select id="colaboradorAusente"><option value="">-- Selecione --</option></select>
+        </div>
+
         <div class="field">
           <div class="field-label col-blue"><span class="dot bg-blue"></span>&#x1F4DD; Observação <span style="font-size:.7rem;color:var(--muted);font-weight:400;text-transform:none;">(opcional)</span></div>
           <textarea id="observacao" placeholder="Informações adicionais sobre este lançamento…" maxlength="300"></textarea>
@@ -1290,6 +1295,7 @@ function refreshMotivoSelect() {
 function refreshTodosOsSelects() {
   fillSelect('posto', postos, true);
   fillSelect('substituto', colaboradores, true);
+  fillSelect('colaboradorAusente', colaboradores, true);
   fillSelect('bicoColaborador', colaboradores, true);
   fillSelect('bicoPosto', postos, true);
   refreshMotivoSelect();
@@ -1355,6 +1361,9 @@ refreshTodosOsSelects();
   var motivoSel = document.getElementById('motivo');
   var motivoOutroWrap = document.getElementById('motivo-outro-wrap-ft');
   var motivoOutroInput = document.getElementById('motivo-outro-ft');
+  var campoAusente = document.getElementById('campoColaboradorAusente');
+  var selAusente = document.getElementById('colaboradorAusente');
+  var labelAusente = document.getElementById('labelColaboradorAusente');
   var horarioSel = document.getElementById('horario');
   var horarioToggleBtn = document.getElementById('btn-toggle-horario-ft');
   var horarioCustomWrap = document.getElementById('horario-custom-ft');
@@ -1374,12 +1383,46 @@ refreshTodosOsSelects();
   function setDataHoraAgora() { dataHoraInput.value = agoraLocalISO(); }
   setDataHoraAgora();
 
+  /* Regras de detecção: certos motivos exigem informar QUAL colaborador
+     está ausente (de férias, atestado, suspenso etc.) — distinto de quem
+     vai cobrir o posto. O rótulo do campo muda conforme o motivo. */
+  function normalizar(s) {
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+  var REGRAS_COLABORADOR_AUSENTE = [
+    { teste: function (m) { return m.indexOf('cobertura') !== -1 && m.indexOf('ferias') !== -1; }, label: 'Colaborador em Cobertura de Férias' },
+    { teste: function (m) { return m.indexOf('atestado') !== -1; }, label: 'Colaborador com Atestado' },
+    { teste: function (m) { return m.indexOf('falta') !== -1; }, label: 'Colaborador com Falta' },
+    { teste: function (m) { return m.indexOf('folga') !== -1 && m.indexOf('vigia') !== -1; }, label: 'Colaborador de Folga do Vigia' },
+    { teste: function (m) { return m.indexOf('remanej') !== -1; }, label: 'Colaborador Remanejado' },
+    { teste: function (m) { return m.indexOf('suspens') !== -1; }, label: 'Colaborador Suspenso' }
+  ];
+  function detectarRegraAusente(motivoTexto) {
+    var m = normalizar(motivoTexto);
+    for (var i = 0; i < REGRAS_COLABORADOR_AUSENTE.length; i++) {
+      if (REGRAS_COLABORADOR_AUSENTE[i].teste(m)) return REGRAS_COLABORADOR_AUSENTE[i];
+    }
+    return null;
+  }
+  function motivoEfetivo() {
+    return motivoSel.value === '__outro__' ? motivoOutroInput.value.trim() : motivoSel.value;
+  }
+  function atualizarCampoAusente() {
+    var regra = detectarRegraAusente(motivoEfetivo());
+    var mostrar = !!regra;
+    campoAusente.classList.toggle('hidden', !mostrar);
+    selAusente.required = mostrar;
+    if (mostrar) labelAusente.textContent = regra.label; else selAusente.value = '';
+  }
+
   motivoSel.addEventListener('change', function () {
     var outro = motivoSel.value === '__outro__';
     motivoOutroWrap.classList.toggle('visible', outro);
     motivoOutroInput.required = outro;
     if (!outro) motivoOutroInput.value = '';
+    atualizarCampoAusente();
   });
+  motivoOutroInput.addEventListener('input', atualizarCampoAusente);
 
   horarioToggleBtn.addEventListener('click', function () {
     horarioCustomWrap.classList.toggle('visible');
@@ -1428,6 +1471,8 @@ refreshTodosOsSelects();
     form.reset();
     motivoOutroWrap.classList.remove('visible');
     horarioCustomWrap.classList.remove('visible');
+    campoAusente.classList.add('hidden');
+    selAusente.required = false;
     setDataHoraAgora();
   }
   btnLimpar.addEventListener('click', limparForm);
@@ -1440,9 +1485,15 @@ refreshTodosOsSelects();
     var horarioVal = horarioSel.value;
     var substitutoId = document.getElementById('substituto').value;
     var dataHoraVal = dataHoraInput.value;
+    var regraAusente = detectarRegraAusente(motivoVal);
+    var colaboradorAusenteId = regraAusente ? selAusente.value : '';
 
     if (!postoId || !motivoVal || !horarioVal || !substitutoId || !dataHoraVal) {
       showToast('⚠️ Preencha todos os campos obrigatórios.', 'error');
+      return;
+    }
+    if (regraAusente && !colaboradorAusenteId) {
+      showToast('⚠️ Informe o ' + regraAusente.label.toLowerCase() + '.', 'error');
       return;
     }
 
@@ -1455,6 +1506,8 @@ refreshTodosOsSelects();
       horario: horarioVal,
       substitutoId: substitutoId,
       substitutoNome: (colaboradores.find(function (c) { return c.id === substitutoId; }) || {}).nome || '',
+      colaboradorAusenteId: colaboradorAusenteId,
+      colaboradorAusenteNome: colaboradorAusenteId ? ((colaboradores.find(function (c) { return c.id === colaboradorAusenteId; }) || {}).nome || '') : '',
       valor: parseFloat(document.getElementById('valor').value) || 0,
       dataHora: dataHoraVal,
       criadoEm: new Date().toISOString()
