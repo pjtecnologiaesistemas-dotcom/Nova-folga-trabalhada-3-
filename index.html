@@ -577,6 +577,8 @@
   }
   .bico-lista-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
   .bico-lista-head h2 { margin-bottom: 0 !important; }
+  .bico-lista-hint { font-size: .74rem; color: var(--muted); line-height: 1.5; margin-top: 12px; }
+  .bico-lista-hint strong { color: var(--accent1); }
 
   /* Espaço extra ao final da aba pra o botão nunca ficar encostado/encoberto
      na borda inferior da tela (gestos do sistema, barra de navegação etc.) */
@@ -1206,6 +1208,7 @@
           </select>
         </div>
       </div>
+      <p class="bico-lista-hint">Mostra se já existe um FT registrado pra cada bico dentro do período acima — não tem relação com pagamento. Pra ver o que já foi pago ou está pendente, use a aba <strong>Pagamentos</strong>.</p>
     </div>
 
     <div class="bico-summary">
@@ -1215,7 +1218,7 @@
       </div>
       <div class="bico-summary-card card-valor">
         <div class="bico-summary-value col-purple" id="bicoValorMensal">R$ 0,00</div>
-        <div class="bico-summary-label" id="bicoValorMensalLabel">&#x2705; Lançado (real)</div>
+        <div class="bico-summary-label" id="bicoValorMensalLabel">&#x2705; Valor com FT registrado</div>
       </div>
     </div>
 
@@ -1234,6 +1237,7 @@
 
   <!-- ABA: PAGAMENTOS -->
   <div class="tab-panel hidden" id="tab-pagamentos">
+    <p class="bico-lista-hint" style="margin:0 0 12px;">Mostra os FTs (de qualquer motivo) já registrados no intervalo abaixo, separados por <strong>pago</strong> ou <strong>pendente</strong> de pagamento — não indica se um bico fixo ainda precisa ser lançado (isso fica na aba Lançamentos).</p>
     <div class="pag-filters-row">
       <div>
         <label style="display:block;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-bottom:5px;">De</label>
@@ -3490,7 +3494,7 @@ var BicoFixoModule = (function () {
     document.getElementById('bicoValorMensal').textContent = fmtMoeda(totalValor);
 
     var colabFiltro = document.getElementById('bicoFiltroColaborador').value;
-    document.getElementById('bicoValorMensalLabel').textContent = '✅ ' + (colabFiltro ? 'Lançado — ' + colabFiltro : 'Lançado (real)') + ' · ' + labelPeriodo(periodo);
+    document.getElementById('bicoValorMensalLabel').textContent = '✅ ' + (colabFiltro ? 'Com FT registrado — ' + colabFiltro : 'Valor com FT registrado') + ' · ' + labelPeriodo(periodo);
   }
 
   function getFiltrados() {
@@ -3531,7 +3535,7 @@ var BicoFixoModule = (function () {
         '<div class="bico-item-info">&#x1F550; ' + escHtml(b.horario || '—') + '</div>' +
         '<div class="bico-item-info">&#x1F4C5; Início: ' + dataInicioTxt + '</div>' +
         '<div class="bico-item-info">&#x1F4B0; <strong>' + fmtMoeda(b.valor) + '</strong> / diária</div>' +
-        '<div class="bico-item-real"><span class="real-label">' + (real > 0 ? '&#x2705; Lançado' : '&#x26A0;&#xFE0F; Não lançado') + ' &middot; ' + labelPeriodo(periodoAtual) + '</span><span class="real-value">' + fmtMoeda(real) + '</span></div>' +
+        '<div class="bico-item-real"><span class="real-label">' + (real > 0 ? '&#x2705; FT registrado' : '&#x26A0;&#xFE0F; Sem FT registrado') + ' &middot; ' + labelPeriodo(periodoAtual) + '</span><span class="real-value">' + fmtMoeda(real) + '</span></div>' +
         diasHtml + obsHtml +
         '<div class="bico-item-actions">' +
           '<button class="btn-edit-item" data-id="' + b.id + '" title="Editar">&#x270F;&#xFE0F;</button>' +
