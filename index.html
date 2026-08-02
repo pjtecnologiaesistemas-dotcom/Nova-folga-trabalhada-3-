@@ -556,12 +556,19 @@
   .modal-box.wide .modal-title { text-align: left; }
 
   /* Bico Fixo */
-  .bico-form-head { display: flex; align-items: center; justify-content: space-between; gap: 10px 14px; flex-wrap: wrap; margin-bottom: 10px; }
+  .bico-form-card { padding: 16px 16px 20px; }
+  .bico-form-head { display: flex; align-items: center; justify-content: space-between; gap: 10px 14px; flex-wrap: wrap; margin-bottom: 8px; }
   .bico-form-head h2 { flex: 1 1 auto; min-width: 0; }
   .bico-form-head .btn-horario-toggle { width: auto; margin-top: 0; flex-shrink: 0; white-space: nowrap; }
-  .bico-form-sub { font-size: .78rem; color: var(--muted); margin: 0 0 18px; }
+  .bico-form-sub { font-size: .76rem; color: var(--muted); margin: 0 0 14px; }
   .bico-form-grid { display: grid; grid-template-columns: 1fr; gap: 0 18px; }
+  .bico-form-grid .field { margin-bottom: 13px; }
+  .bico-form-grid .field-label { margin-bottom: 4px; }
   .bico-form-grid .field-span2 { grid-column: 1 / -1; }
+  .bico-form-grid select, .bico-form-grid input, .bico-form-grid textarea { padding: 11px 12px; }
+  .bico-form-grid select { padding-right: 32px; }
+  .bico-form-grid textarea { min-height: 60px; }
+  .bico-form-grid .btn-row { margin-top: 6px; margin-bottom: 4px; }
   @media (min-width: 600px) {
     .bico-form-grid { grid-template-columns: 1fr 1fr; }
   }
@@ -570,6 +577,10 @@
   }
   .bico-lista-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
   .bico-lista-head h2 { margin-bottom: 0 !important; }
+
+  /* Espaço extra ao final da aba pra o botão nunca ficar encostado/encoberto
+     na borda inferior da tela (gestos do sistema, barra de navegação etc.) */
+  #tab-bico { padding-bottom: 24px; }
 
   .bico-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
   .bico-summary-card {
@@ -1108,7 +1119,7 @@
 
   <!-- ABA: BICO FIXO (lançamento) -->
   <div class="tab-panel hidden" id="tab-bico">
-    <div class="cadastro-section">
+    <div class="cadastro-section bico-form-card">
       <div class="bico-form-head">
         <h2 class="col-purple" id="bicoFormTitulo" style="margin-bottom:0;">&#x1F4A0; Novo Bico Fixo</h2>
         <button type="button" class="btn-horario-toggle" id="btnVerLancamentosBico">&#x1F4CB; Ver lançamentos</button>
