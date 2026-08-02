@@ -175,6 +175,7 @@
   .tabs-wrapper { max-width: 480px; margin: 8px auto 0; padding: 0 12px; width: 100%; }
   .tab-panel { display: block; }
   .tab-panel.hidden { display: none; }
+  .hidden { display: none; }
 
   .form-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 16px; box-shadow: var(--shadow); }
 
@@ -392,6 +393,14 @@
   .hist-card-grid .val { word-break: break-word; }
   .hist-card-valor { font-family: 'Exo 2', sans-serif; font-weight: 800; color: var(--accent2); }
   .hist-card-obs { margin-top: 9px; padding-top: 9px; border-top: 1px dashed var(--border); font-size: .8rem; color: var(--text); opacity: .88; }
+  .hist-card-ausente { margin-top: 9px; padding: 8px 10px; border-radius: 8px; background: rgba(252,92,101,.1); border: 1px solid rgba(252,92,101,.28); font-size: .8rem; color: var(--text); }
+  .hist-card-ausente strong { color: var(--danger); }
+  .hist-card-ausente .ausente-motivo { color: var(--muted); }
+  .hist-edit-btn {
+    width: 30px; height: 30px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg);
+    color: var(--muted); font-size: .82rem; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; flex-shrink: 0;
+  }
+  .hist-edit-btn:hover { border-color: var(--accent1); color: var(--accent1); }
 
   /* ── Aba Pagamentos ── */
   .pag-total-card {
@@ -1080,6 +1089,97 @@
   </div>
 </div>
 
+<!-- Modal: edição de lançamento (FT Pontual ou Bico Fixo) a partir do Histórico -->
+<div class="modal-overlay" id="modalEditarLancamento">
+  <div class="modal-box wide">
+    <div class="modal-title" id="editModalTitulo">&#x270F;&#xFE0F; Editar Lançamento</div>
+
+    <!-- Campos exclusivos de FT Pontual -->
+    <div id="editCamposFt">
+      <div class="field">
+        <div class="field-label col-amber"><span class="dot bg-amber"></span>&#x1F4CD; Posto</div>
+        <select id="editFtPosto"><option value="">-- Selecione --</option></select>
+      </div>
+      <div class="field">
+        <div class="field-label col-orange"><span class="dot bg-orange"></span>&#x1F4AC; Motivo</div>
+        <select id="editFtMotivo"><option value="">-- Selecione --</option></select>
+        <div class="motivo-outro-wrap" id="editFtMotivoOutroWrap">
+          <input type="text" id="editFtMotivoOutro" placeholder="Descreva o motivo…" maxlength="100">
+        </div>
+      </div>
+      <div class="field hidden" id="editFtCampoAusente">
+        <div class="field-label col-danger"><span class="dot bg-danger"></span>&#x1F464; <span id="editFtLabelAusente">Colaborador Ausente</span></div>
+        <select id="editFtAusente"><option value="">-- Selecione --</option></select>
+      </div>
+      <div class="field">
+        <div class="field-label col-green"><span class="dot bg-green"></span>&#x1F464; Quem está indo (Porteiro/Colaborador)</div>
+        <select id="editFtSubstituto"><option value="">-- Selecione --</option></select>
+      </div>
+      <div class="field">
+        <div class="field-label col-blue"><span class="dot bg-blue"></span>&#x1F550; Horário</div>
+        <input type="text" id="editFtHorario" placeholder="Ex: 18:00 – 06:00" maxlength="40">
+      </div>
+      <div class="field">
+        <div class="field-label col-blue"><span class="dot bg-blue"></span>&#x1F4C5; Data / Hora</div>
+        <input type="datetime-local" id="editFtDataHora">
+      </div>
+    </div>
+
+    <!-- Campos exclusivos de Bico Fixo -->
+    <div id="editCamposBico">
+      <div class="field">
+        <div class="field-label col-green"><span class="dot bg-green"></span>&#x1F464; Colaborador</div>
+        <select id="editBicoColaborador"><option value="">-- Selecione --</option></select>
+      </div>
+      <div class="field">
+        <div class="field-label col-amber"><span class="dot bg-amber"></span>&#x1F4CD; Posto</div>
+        <select id="editBicoPosto"><option value="">-- Selecione --</option></select>
+      </div>
+      <div class="field">
+        <div class="field-label col-blue"><span class="dot bg-blue"></span>&#x1F550; Horário</div>
+        <input type="text" id="editBicoHorario" placeholder="Ex: 18:00 – 06:00" maxlength="40">
+      </div>
+      <div class="field">
+        <div class="field-label col-purple"><span class="dot bg-purple"></span>&#x1F4C6; Dias da semana</div>
+        <div class="day-chip-row" id="editBicoDias">
+          <button type="button" class="day-chip" data-dia="DOM">Dom</button>
+          <button type="button" class="day-chip" data-dia="SEG">Seg</button>
+          <button type="button" class="day-chip" data-dia="TER">Ter</button>
+          <button type="button" class="day-chip" data-dia="QUA">Qua</button>
+          <button type="button" class="day-chip" data-dia="QUI">Qui</button>
+          <button type="button" class="day-chip" data-dia="SEX">Sex</button>
+          <button type="button" class="day-chip" data-dia="SAB">Sáb</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label col-blue"><span class="dot bg-blue"></span>&#x1F4C5; Data de início</div>
+        <input type="date" id="editBicoDataInicio">
+      </div>
+      <div class="field">
+        <div class="toggle-row">
+          <input type="checkbox" id="editBicoAtivo">
+          <label for="editBicoAtivo">Ativo</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Campos comuns -->
+    <div class="field">
+      <div class="field-label col-blue"><span class="dot bg-blue"></span>&#x1F4DD; Observação <span style="font-size:.7rem;color:var(--muted);font-weight:400;text-transform:none;">(opcional)</span></div>
+      <textarea id="editObservacao" placeholder="Informações adicionais sobre este lançamento…" maxlength="300"></textarea>
+    </div>
+    <div class="field" style="margin-bottom:0;">
+      <div class="field-label col-green"><span class="dot bg-green"></span>&#x1F4B0; Valor (R$)</div>
+      <div class="input-prefix"><span>R$</span><input type="number" id="editValor" min="0" step="0.01" placeholder="0,00"></div>
+    </div>
+
+    <div class="btn-row" style="margin-top:18px;">
+      <button type="button" class="btn btn-clear" id="btnFecharEditModal">&#x2715; Cancelar</button>
+      <button type="button" class="btn btn-submit" id="btnSalvarEdicao">&#x1F4BE; Salvar Alterações</button>
+    </div>
+  </div>
+</div>
+
 <!-- Alertas flutuantes de pendências por posto (não bloqueante) -->
 <div class="floating-alerts" id="floatingAlerts"></div>
 
@@ -1469,6 +1569,13 @@ refreshTodosOsSelects();
 
   function limparForm() {
     form.reset();
+    /* form.reset() não dispara 'change' nos <select> — o skin visual
+       customizado (cs-wrap) só atualiza seu rótulo ao ouvir 'change',
+       então sem isso os campos ficavam com o valor real limpo mas
+       mostrando visualmente a última seleção. Forçamos a atualização. */
+    form.querySelectorAll('select').forEach(function (s) {
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+    });
     motivoOutroWrap.classList.remove('visible');
     horarioCustomWrap.classList.remove('visible');
     campoAusente.classList.add('hidden');
@@ -1604,6 +1711,12 @@ refreshTodosOsSelects();
 
   function limparForm() {
     form.reset();
+    /* Ver nota equivalente no módulo Nova FT: form.reset() não dispara
+       'change', então o skin visual do <select> precisa ser atualizado
+       manualmente para refletir a limpeza real dos campos. */
+    form.querySelectorAll('select').forEach(function (s) {
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+    });
     document.getElementById('bicoAtivo').checked = true;
     horarioCustomWrap.classList.remove('visible');
     diasWrap.querySelectorAll('.day-chip.active').forEach(function (c) { c.classList.remove('active'); });
@@ -1925,7 +2038,8 @@ refreshTodosOsSelects();
         detalhe: f.motivo || '',
         horario: f.horario || '',
         valor: f.valor || 0,
-        observacao: f.observacao || ''
+        observacao: f.observacao || '',
+        ausenteNome: f.colaboradorAusenteNome || ''
       });
     });
 
@@ -1944,7 +2058,8 @@ refreshTodosOsSelects();
         detalhe: (diasTxt || '—') + (b.ativo === false ? ' · Inativo' : ' · Ativo'),
         horario: b.horario || '',
         valor: b.valor || 0,
-        observacao: b.observacao || ''
+        observacao: b.observacao || '',
+        ausenteNome: ''
       });
     });
 
@@ -2025,6 +2140,7 @@ refreshTodosOsSelects();
         '<div class="hist-card-top">' +
           '<span class="hist-badge">' + r.tipoLabel + '</span>' +
           '<span class="hist-card-date">' + formatarDataBR(r.dataObj, r.comHora) + '</span>' +
+          '<button type="button" class="hist-edit-btn" data-tipo="' + r.tipoKey + '" data-id="' + r.id + '" title="Editar lançamento">&#x270F;&#xFE0F;</button>' +
         '</div>' +
         '<div class="hist-card-title">&#x1F464; ' + escHtml(r.colaborador || '—') + '</div>' +
         '<div class="hist-card-grid">' +
@@ -2033,6 +2149,7 @@ refreshTodosOsSelects();
           '<div class="field-mini"><span class="lbl">Horário</span><span class="val">' + escHtml(r.horario || '—') + '</span></div>' +
           '<div class="field-mini"><span class="lbl">Valor</span><span class="val hist-card-valor">' + formatarValor(r.valor) + '</span></div>' +
         '</div>' +
+        (r.ausenteNome ? '<div class="hist-card-ausente">&#x1F6AB; Colaborador ausente: <strong>' + escHtml(r.ausenteNome) + '</strong> <span class="ausente-motivo">— ' + escHtml(r.detalhe || '') + '</span></div>' : '') +
         (r.observacao ? '<div class="hist-card-obs">&#x1F4DD; ' + escHtml(r.observacao) + '</div>' : '') +
       '</div>';
     }).join('');
@@ -2045,6 +2162,12 @@ refreshTodosOsSelects();
   }
 
   window.renderHistoricoTab = render;
+
+  listaEl.addEventListener('click', function (e) {
+    var btn = e.target.closest('.hist-edit-btn');
+    if (!btn) return;
+    if (typeof window.abrirEdicaoLancamento === 'function') window.abrirEdicaoLancamento(btn.dataset.tipo, btn.dataset.id);
+  });
 
   selTipo.addEventListener('change', render);
   selPeriodo.addEventListener('change', render);
@@ -2210,7 +2333,8 @@ refreshTodosOsSelects();
       registros.push({
         id: f.id, tipoKey: 'ft', tipoLabel: '📌 FT Pontual', dataObj: dataObj, comHora: true,
         posto: f.postoNome || '', detalheLabel: 'Motivo', detalhe: f.motivo || '',
-        horario: f.horario || '', valor: f.valor || 0, observacao: f.observacao || '', pago: !!f.pago
+        horario: f.horario || '', valor: f.valor || 0, observacao: f.observacao || '', pago: !!f.pago,
+        ausenteNome: f.colaboradorAusenteNome || ''
       });
     });
 
@@ -2220,7 +2344,8 @@ refreshTodosOsSelects();
         id: b.id, tipoKey: 'bico', tipoLabel: '💠 Bico Fixo', dataObj: dataObj, comHora: false,
         posto: b.postoNome || '', detalheLabel: 'Dias / Status',
         detalhe: ((b.dias || []).join(', ') || '—') + (b.ativo === false ? ' · Inativo' : ' · Ativo'),
-        horario: b.horario || '', valor: b.valor || 0, observacao: b.observacao || '', pago: !!b.pago
+        horario: b.horario || '', valor: b.valor || 0, observacao: b.observacao || '', pago: !!b.pago,
+        ausenteNome: ''
       });
     });
 
@@ -2257,6 +2382,7 @@ refreshTodosOsSelects();
         '<div class="hist-card-top">' +
           '<span class="hist-badge">' + r.tipoLabel + '</span>' +
           '<span class="hist-card-date">' + formatarDataBR(r.dataObj, r.comHora) + '</span>' +
+          '<button type="button" class="hist-edit-btn" data-tipo="' + r.tipoKey + '" data-id="' + r.id + '" title="Editar lançamento">&#x270F;&#xFE0F;</button>' +
           '<button type="button" class="pag-status-toggle ' + (r.pago ? 'pago' : 'pendente') + '" data-tipo="' + r.tipoKey + '" data-id="' + r.id + '">' +
             (r.pago ? '&#x2705; Pago' : '&#x23F3; Pendente') +
           '</button>' +
@@ -2267,6 +2393,7 @@ refreshTodosOsSelects();
           '<div class="field-mini"><span class="lbl">Horário</span><span class="val">' + escHtml(r.horario || '—') + '</span></div>' +
           '<div class="field-mini"><span class="lbl">Valor</span><span class="val hist-card-valor">' + formatarValor(r.valor) + '</span></div>' +
         '</div>' +
+        (r.ausenteNome ? '<div class="hist-card-ausente">&#x1F6AB; Colaborador ausente: <strong>' + escHtml(r.ausenteNome) + '</strong> <span class="ausente-motivo">— ' + escHtml(r.detalhe || '') + '</span></div>' : '') +
         (r.observacao ? '<div class="hist-card-obs">📝 ' + escHtml(r.observacao) + '</div>' : '') +
       '</div>';
     }).join('');
@@ -2322,6 +2449,11 @@ refreshTodosOsSelects();
   }
 
   listaEl.addEventListener('click', function (e) {
+    var editBtn = e.target.closest('.hist-edit-btn');
+    if (editBtn) {
+      if (typeof window.abrirEdicaoLancamento === 'function') window.abrirEdicaoLancamento(editBtn.dataset.tipo, editBtn.dataset.id);
+      return;
+    }
     var btn = e.target.closest('.pag-status-toggle');
     if (!btn) return;
     togglePago(btn.dataset.tipo, btn.dataset.id);
@@ -2401,6 +2533,7 @@ refreshTodosOsSelects();
         r.posto || '—',
         r.tipoKey === 'ft' ? 'FT Pontual' : 'Bico Fixo',
         r.detalhe || '—',
+        r.ausenteNome || '—',
         r.horario || '—',
         formatarValor(r.valor)
       ];
@@ -2523,6 +2656,281 @@ refreshTodosOsSelects();
   btnRecibo.addEventListener('click', gerarRecibo);
 
   render();
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO — Edição de Lançamento (FT Pontual / Bico Fixo)
+   Acessado pelo lápis nos cards do Histórico e da aba Pagamentos.
+   Edita o registro diretamente no localStorage e chama
+   saveStorage(), que replica a alteração para o Firestore — a
+   mesma via usada por todo o app — refletindo em tempo real em
+   qualquer outro aparelho conectado (via onSnapshot) e em todas
+   as telas abertas neste aparelho.
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  var overlay = document.getElementById('modalEditarLancamento');
+  var titulo = document.getElementById('editModalTitulo');
+  var camposFt = document.getElementById('editCamposFt');
+  var camposBico = document.getElementById('editCamposBico');
+
+  /* Campos — FT */
+  var ftPosto = document.getElementById('editFtPosto');
+  var ftMotivo = document.getElementById('editFtMotivo');
+  var ftMotivoOutroWrap = document.getElementById('editFtMotivoOutroWrap');
+  var ftMotivoOutro = document.getElementById('editFtMotivoOutro');
+  var ftCampoAusente = document.getElementById('editFtCampoAusente');
+  var ftLabelAusente = document.getElementById('editFtLabelAusente');
+  var ftAusente = document.getElementById('editFtAusente');
+  var ftSubstituto = document.getElementById('editFtSubstituto');
+  var ftHorario = document.getElementById('editFtHorario');
+  var ftDataHora = document.getElementById('editFtDataHora');
+
+  /* Campos — Bico */
+  var bicoColaborador = document.getElementById('editBicoColaborador');
+  var bicoPosto = document.getElementById('editBicoPosto');
+  var bicoHorario = document.getElementById('editBicoHorario');
+  var bicoDias = document.getElementById('editBicoDias');
+  var bicoDataInicio = document.getElementById('editBicoDataInicio');
+  var bicoAtivo = document.getElementById('editBicoAtivo');
+
+  /* Campos comuns */
+  var comumObservacao = document.getElementById('editObservacao');
+  var comumValor = document.getElementById('editValor');
+
+  var btnFechar = document.getElementById('btnFecharEditModal');
+  var btnSalvar = document.getElementById('btnSalvarEdicao');
+
+  var tipoAtual = null;
+  var idAtual = null;
+
+  function normalizar(s) {
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+  var REGRAS_COLABORADOR_AUSENTE = [
+    { teste: function (m) { return m.indexOf('cobertura') !== -1 && m.indexOf('ferias') !== -1; }, label: 'Colaborador em Cobertura de Férias' },
+    { teste: function (m) { return m.indexOf('atestado') !== -1; }, label: 'Colaborador com Atestado' },
+    { teste: function (m) { return m.indexOf('falta') !== -1; }, label: 'Colaborador com Falta' },
+    { teste: function (m) { return m.indexOf('folga') !== -1 && m.indexOf('vigia') !== -1; }, label: 'Colaborador de Folga do Vigia' },
+    { teste: function (m) { return m.indexOf('remanej') !== -1; }, label: 'Colaborador Remanejado' },
+    { teste: function (m) { return m.indexOf('suspens') !== -1; }, label: 'Colaborador Suspenso' }
+  ];
+  function detectarRegraAusente(motivoTexto) {
+    var m = normalizar(motivoTexto);
+    for (var i = 0; i < REGRAS_COLABORADOR_AUSENTE.length; i++) {
+      if (REGRAS_COLABORADOR_AUSENTE[i].teste(m)) return REGRAS_COLABORADOR_AUSENTE[i];
+    }
+    return null;
+  }
+  function ftMotivoEfetivo() {
+    return ftMotivo.value === '__outro__' ? ftMotivoOutro.value.trim() : ftMotivo.value;
+  }
+  function atualizarFtCampoAusente(nomeAtualSelecionado) {
+    var regra = detectarRegraAusente(ftMotivoEfetivo());
+    var mostrar = !!regra;
+    ftCampoAusente.classList.toggle('hidden', !mostrar);
+    if (mostrar) {
+      ftLabelAusente.textContent = regra.label;
+      if (nomeAtualSelecionado !== undefined) ftAusente.value = nomeAtualSelecionado;
+    } else {
+      ftAusente.value = '';
+    }
+    ftAusente.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  ftMotivo.addEventListener('change', function () {
+    var outro = ftMotivo.value === '__outro__';
+    ftMotivoOutroWrap.classList.toggle('visible', outro);
+    if (!outro) ftMotivoOutro.value = '';
+    atualizarFtCampoAusente();
+  });
+  ftMotivoOutro.addEventListener('input', function () { atualizarFtCampoAusente(); });
+
+  function popularMotivoSelect(atual) {
+    ftMotivo.innerHTML = '<option value="">-- Selecione --</option>' +
+      sortAlpha(motivos).map(function (m) { return '<option value="' + escHtml(m.nome) + '">' + escHtml(m.nome) + '</option>'; }).join('') +
+      '<option value="__outro__">&#x270F;&#xFE0F; Outro (digitar)</option>';
+    var existeOpcao = Array.prototype.some.call(ftMotivo.options, function (o) { return o.value === atual; });
+    ftMotivo.value = existeOpcao ? atual : '__outro__';
+    ftMotivo.dispatchEvent(new Event('change', { bubbles: true }));
+    if (!existeOpcao) {
+      ftMotivoOutro.value = atual || '';
+      ftMotivoOutroWrap.classList.add('visible');
+    }
+  }
+
+  function dias(bico) { return bico.dias || []; }
+
+  bicoDias.addEventListener('click', function (e) {
+    var chip = e.target.closest('.day-chip');
+    if (chip) chip.classList.toggle('active');
+  });
+  function diasSelecionadosBico() {
+    return Array.prototype.filter.call(bicoDias.querySelectorAll('.day-chip'), function (c) { return c.classList.contains('active'); })
+      .map(function (c) { return c.dataset.dia; });
+  }
+
+  function agoraLocalISOde(iso) {
+    var d = iso ? new Date(iso) : new Date();
+    if (isNaN(d.getTime())) d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  }
+
+  function abrir(tipo, id) {
+    var chave = tipo === 'ft' ? 'ft_lancamentos' : 'ft_bicos';
+    var arr = loadStorage(chave);
+    var item = arr.find(function (x) { return x.id === id; });
+    if (!item) { showToast('⚠️ Lançamento não encontrado (pode já ter sido removido).', 'error'); return; }
+
+    tipoAtual = tipo;
+    idAtual = id;
+
+    fillSelect('editFtPosto', postos, true);
+    fillSelect('editFtAusente', colaboradores, true);
+    fillSelect('editFtSubstituto', colaboradores, true);
+    fillSelect('editBicoColaborador', colaboradores, true);
+    fillSelect('editBicoPosto', postos, true);
+
+    comumObservacao.value = item.observacao || '';
+    comumValor.value = item.valor || '';
+
+    if (tipo === 'ft') {
+      titulo.innerHTML = '&#x270F;&#xFE0F; Editar FT Pontual';
+      camposFt.classList.remove('hidden');
+      camposBico.classList.add('hidden');
+
+      ftPosto.value = item.postoId || '';
+      ftPosto.dispatchEvent(new Event('change', { bubbles: true }));
+      popularMotivoSelect(item.motivo || '');
+      ftSubstituto.value = item.substitutoId || '';
+      ftSubstituto.dispatchEvent(new Event('change', { bubbles: true }));
+      ftHorario.value = item.horario || '';
+      ftDataHora.value = agoraLocalISOde(item.dataHora);
+      atualizarFtCampoAusente(item.colaboradorAusenteId || '');
+    } else {
+      titulo.innerHTML = '&#x270F;&#xFE0F; Editar Bico Fixo';
+      camposFt.classList.add('hidden');
+      camposBico.classList.remove('hidden');
+
+      bicoColaborador.value = item.colaboradorId || '';
+      bicoColaborador.dispatchEvent(new Event('change', { bubbles: true }));
+      bicoPosto.value = item.postoId || '';
+      bicoPosto.dispatchEvent(new Event('change', { bubbles: true }));
+      bicoHorario.value = item.horario || '';
+      bicoDataInicio.value = item.dataInicio || '';
+      bicoAtivo.checked = item.ativo !== false;
+      bicoDias.querySelectorAll('.day-chip').forEach(function (c) {
+        c.classList.toggle('active', dias(item).indexOf(c.dataset.dia) !== -1);
+      });
+    }
+
+    overlay.classList.add('show');
+  }
+  window.abrirEdicaoLancamento = abrir;
+
+  function fechar() {
+    overlay.classList.remove('show');
+    tipoAtual = null;
+    idAtual = null;
+  }
+  btnFechar.addEventListener('click', fechar);
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) fechar(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && overlay.classList.contains('show')) fechar(); });
+
+  function atualizarTelasDependentes() {
+    if (typeof window.renderHistoricoTab === 'function') window.renderHistoricoTab();
+    if (typeof window.renderPagamentosTab === 'function') window.renderPagamentosTab();
+    if (typeof window.renderConsolidadoTab === 'function') window.renderConsolidadoTab();
+    if (typeof window.renderAlertasTab === 'function') window.renderAlertasTab();
+  }
+
+  function salvar() {
+    if (!tipoAtual || !idAtual) return;
+
+    if (tipoAtual === 'ft') {
+      var postoId = ftPosto.value;
+      var motivoVal = ftMotivoEfetivo();
+      var horarioVal = ftHorario.value.trim();
+      var substitutoId = ftSubstituto.value;
+      var dataHoraVal = ftDataHora.value;
+      var regraAusente = detectarRegraAusente(motivoVal);
+      var colaboradorAusenteId = regraAusente ? ftAusente.value : '';
+
+      if (!postoId || !motivoVal || !horarioVal || !substitutoId || !dataHoraVal) {
+        showToast('⚠️ Preencha todos os campos obrigatórios.', 'error');
+        return;
+      }
+      if (regraAusente && !colaboradorAusenteId) {
+        showToast('⚠️ Informe o ' + regraAusente.label.toLowerCase() + '.', 'error');
+        return;
+      }
+
+      var arrFt = loadStorage('ft_lancamentos');
+      var idxFt = arrFt.findIndex(function (x) { return x.id === idAtual; });
+      if (idxFt === -1) { showToast('⚠️ Lançamento não encontrado.', 'error'); fechar(); return; }
+
+      var original = arrFt[idxFt];
+      arrFt[idxFt] = {
+        id: original.id,
+        postoId: postoId,
+        postoNome: (postos.find(function (p) { return p.id === postoId; }) || {}).nome || '',
+        motivo: motivoVal,
+        observacao: comumObservacao.value.trim(),
+        horario: horarioVal,
+        substitutoId: substitutoId,
+        substitutoNome: (colaboradores.find(function (c) { return c.id === substitutoId; }) || {}).nome || '',
+        colaboradorAusenteId: colaboradorAusenteId,
+        colaboradorAusenteNome: colaboradorAusenteId ? ((colaboradores.find(function (c) { return c.id === colaboradorAusenteId; }) || {}).nome || '') : '',
+        valor: parseFloat(comumValor.value) || 0,
+        dataHora: dataHoraVal,
+        criadoEm: original.criadoEm || new Date().toISOString(),
+        pago: original.pago,
+        editadoEm: new Date().toISOString()
+      };
+      saveStorage('ft_lancamentos', arrFt);
+    } else {
+      var colaboradorId = bicoColaborador.value;
+      var postoIdB = bicoPosto.value;
+      var horarioValB = bicoHorario.value.trim();
+      var dataInicio = bicoDataInicio.value;
+      var diasSel = diasSelecionadosBico();
+
+      if (!colaboradorId || !postoIdB || !horarioValB || !dataInicio || !diasSel.length) {
+        showToast('⚠️ Preencha todos os campos obrigatórios (incluindo os dias da semana).', 'error');
+        return;
+      }
+
+      var arrBico = loadStorage('ft_bicos');
+      var idxBico = arrBico.findIndex(function (x) { return x.id === idAtual; });
+      if (idxBico === -1) { showToast('⚠️ Lançamento não encontrado.', 'error'); fechar(); return; }
+
+      var originalB = arrBico[idxBico];
+      arrBico[idxBico] = {
+        id: originalB.id,
+        colaboradorId: colaboradorId,
+        colaboradorNome: (colaboradores.find(function (c) { return c.id === colaboradorId; }) || {}).nome || '',
+        postoId: postoIdB,
+        postoNome: (postos.find(function (p) { return p.id === postoIdB; }) || {}).nome || '',
+        horario: horarioValB,
+        dias: diasSel,
+        dataInicio: dataInicio,
+        valor: parseFloat(comumValor.value) || 0,
+        observacao: comumObservacao.value.trim(),
+        ativo: bicoAtivo.checked,
+        criadoEm: originalB.criadoEm || new Date().toISOString(),
+        pago: originalB.pago,
+        editadoEm: new Date().toISOString()
+      };
+      saveStorage('ft_bicos', arrBico);
+    }
+
+    showToast('✅ Lançamento atualizado com sucesso!', 'success');
+    fechar();
+    atualizarTelasDependentes();
+  }
+  btnSalvar.addEventListener('click', salvar);
 }());
 
 /* ════════════════════════════════════════════════════════════
