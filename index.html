@@ -407,12 +407,6 @@
     color: var(--muted); font-size: .82rem; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; flex-shrink: 0;
   }
   .hist-edit-btn:hover { border-color: var(--accent1); color: var(--accent1); }
-  .hist-card-actions { display: flex; gap: 6px; flex-shrink: 0; }
-  .hist-delete-btn {
-    width: 30px; height: 30px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--input-bg);
-    color: var(--muted); font-size: .82rem; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; flex-shrink: 0;
-  }
-  .hist-delete-btn:hover { border-color: var(--danger); color: var(--danger); background: rgba(252,92,101,.12); }
 
   /* ── Aba Pagamentos ── */
   .pag-total-card {
@@ -2177,10 +2171,7 @@ refreshTodosOsSelects();
         '<div class="hist-card-top">' +
           '<span class="hist-badge">' + r.tipoLabel + '</span>' +
           '<span class="hist-card-date">' + formatarDataBR(r.dataObj, r.comHora) + '</span>' +
-          '<div class="hist-card-actions">' +
-            '<button type="button" class="hist-edit-btn" data-tipo="' + r.tipoKey + '" data-id="' + r.id + '" title="Editar lançamento">&#x270F;&#xFE0F;</button>' +
-            '<button type="button" class="hist-delete-btn" data-tipo="' + r.tipoKey + '" data-id="' + r.id + '" title="Excluir lançamento">&#x1F5D1;&#xFE0F;</button>' +
-          '</div>' +
+          '<button type="button" class="hist-edit-btn" data-tipo="' + r.tipoKey + '" data-id="' + r.id + '" title="Editar lançamento">&#x270F;&#xFE0F;</button>' +
         '</div>' +
         '<div class="hist-card-title">&#x1F464; ' + escHtml(r.colaborador || '—') + '</div>' +
         '<div class="hist-card-grid">' +
@@ -2203,23 +2194,10 @@ refreshTodosOsSelects();
 
   window.renderHistoricoTab = render;
 
-  function excluirLancamento(tipo, id) {
-    var chave = tipo === 'ft' ? 'ft_lancamentos' : 'ft_bicos';
-    var arr = loadStorage(chave);
-    var item = arr.find(function (x) { return x.id === id; });
-    var nomeItem = item ? (item.substitutoNome || item.colaboradorNome || '') : '';
-    if (!confirm('Excluir definitivamente o lançamento' + (nomeItem ? ' de "' + nomeItem + '"' : '') + '? Essa ação não pode ser desfeita.')) return;
-    var novoArr = arr.filter(function (x) { return x.id !== id; });
-    saveStorage(chave, novoArr);
-    showToast('🗑️ Lançamento excluído.', 'success');
-    render();
-  }
-
   listaEl.addEventListener('click', function (e) {
     var btn = e.target.closest('.hist-edit-btn');
-    if (btn) { if (typeof window.abrirEdicaoLancamento === 'function') window.abrirEdicaoLancamento(btn.dataset.tipo, btn.dataset.id); return; }
-    var delBtn = e.target.closest('.hist-delete-btn');
-    if (delBtn) { excluirLancamento(delBtn.dataset.tipo, delBtn.dataset.id); return; }
+    if (!btn) return;
+    if (typeof window.abrirEdicaoLancamento === 'function') window.abrirEdicaoLancamento(btn.dataset.tipo, btn.dataset.id);
   });
 
   selTipo.addEventListener('change', render);
@@ -2647,14 +2625,14 @@ refreshTodosOsSelects();
 
     /* Tabela de lançamentos */
     doc.autoTable({
-      head: [['Data', 'Posto', 'Tipo', 'Motivo / Dias', 'Ausente', 'Horário', 'Valor']],
+      head: [['Data', 'Posto', 'Tipo', 'Motivo / Dias', 'Horário', 'Valor']],
       body: linhas,
       startY: 132,
       margin: { left: marginX, right: marginX },
       styles: { fontSize: 8.5, cellPadding: 6, overflow: 'linebreak', textColor: [30, 30, 30] },
       headStyles: { fillColor: [26, 26, 26], textColor: [255, 255, 255], fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [250, 250, 250] },
-      columnStyles: { 6: { halign: 'right', fontStyle: 'bold' } }
+      columnStyles: { 5: { halign: 'right', fontStyle: 'bold' } }
     });
 
     var afterTableY = doc.lastAutoTable.finalY + 22;
@@ -4218,29 +4196,3 @@ var LembretesModule = (function () {
 
 </body>
 </html>
-ateLabel();
-  }
-
-  function enhanceAll() {
-    document.querySelectorAll('select').forEach(enhance);
-  }
-
-  document.addEventListener('click', function (e) {
-    if (e.target.closest('.cs-wrap')) return;
-    document.querySelectorAll('.cs-wrap.cs-open').forEach(function (w) {
-      w.classList.remove('cs-open');
-      var t = w.querySelector('.cs-trigger'), p = w.querySelector('.cs-panel');
-      if (t) t.classList.remove('open');
-      if (p) p.classList.remove('open');
-    });
-  });
-
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') {
-      document.querySelectorAll('.cs-wrap.cs-open').forEach(function (w) {
-        w.classList.remove('cs-open');
-        var t = w.querySelector('.cs-trigger'), p = w.querySelector('.cs-panel');
-        if (t) t.classList.remove('open');
-        if (p) p.classList.remove('open');
-      });
-    }
