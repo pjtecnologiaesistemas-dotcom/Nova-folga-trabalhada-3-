@@ -1836,4 +1836,2411 @@ refreshTodosOsSelects();
       var itens = opts.getItems();
       var fonte = termo ? itens.filter(function (i) { return i.nome.toLowerCase().indexOf(termo) !== -1; }) : itens;
       if (!itens.length) { listEl.innerHTML = '<p class="empty-state">' + opts.emptyMsg + '</p>'; return; }
-      if (!
+      if (!fonte.length) { listEl.innerHTML = '<p class="empty-state">Nenhum resultado para "' + escHtml(termo) + '".</p>'; return; }
+      listEl.innerHTML = sortAlpha(fonte).map(function (i) {
+        return '<div class="list-item" data-id="' + i.id + '">' +
+          '<span>' + opts.icon + ' ' + escHtml(i.nome) + '</span>' +
+          '<div style="display:flex;gap:4px;flex-shrink:0;">' +
+            '<button class="btn-remove" data-id="' + i.id + '" title="Remover">&#x2715;</button>' +
+          '</div></div>';
+      }).join('');
+    }
+
+    function atualizarVisibilidade() {
+      var termo = (buscaEl.value || '').trim();
+      var visivel = expandido || !!termo;
+      listEl.classList.toggle('collapsed', !visivel);
+      buscaEl.classList.toggle('show', expandido);
+      toggleEl.classList.toggle('active', expandido);
+      toggleEl.innerHTML = expandido ? '&#x1F648; Ocultar lista' : '&#x1F441;&#xFE0F; Mostrar lista';
+    }
+
+    function add() {
+      var nome = inputEl.value.trim();
+      if (!nome) return;
+      var itens = opts.getItems();
+      if (itens.some(function (i) { return i.nome.toLowerCase() === nome.toLowerCase(); })) {
+        showToast('⚠️ ' + opts.label + ' já cadastrado.', 'error'); return;
+      }
+      itens.push({ id: gerarId(), nome: nome });
+      opts.setItems(itens);
+      inputEl.value = '';
+      render();
+      opts.onChange();
+      showToast('✅ ' + opts.label + ' adicionado.', 'success');
+    }
+
+    function remove(id) {
+      var itens = opts.getItems();
+      var item = itens.find(function (i) { return i.id === id; });
+      if (!item) return;
+      if (!confirm('Remover "' + item.nome + '"?')) return;
+      opts.setItems(itens.filter(function (i) { return i.id !== id; }));
+      render();
+      opts.onChange();
+      showToast('🗑️ ' + opts.label + ' removido.', 'success');
+    }
+
+    addBtn.addEventListener('click', add);
+    inputEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+    toggleEl.addEventListener('click', function () {
+      expandido = !expandido;
+      if (!expandido) buscaEl.value = '';
+      render();
+      atualizarVisibilidade();
+    });
+    buscaEl.addEventListener('input', function () { render(); atualizarVisibilidade(); });
+    listEl.addEventListener('click', function (e) {
+      var btn = e.target.closest('.btn-remove');
+      if (btn) remove(btn.dataset.id);
+    });
+
+    render();
+  }
+
+  criarCadastroSimples({
+    getItems: function () { return colaboradores; },
+    setItems: function (v) { colaboradores = dedupe(v); saveStorage(LS_COLAB, colaboradores); },
+    onChange: refreshTodosOsSelects,
+    listId: 'listaColaboradores', badgeId: 'badge-colaboradores', buscaId: 'buscaColaborador',
+    toggleId: 'btnToggleColaboradores', inputId: 'inputColaborador', addBtnId: 'btnAddColaborador',
+    icon: '&#x1F464;', label: 'Colaborador', emptyMsg: 'Nenhum colaborador cadastrado.'
+  });
+
+  criarCadastroSimples({
+    getItems: function () { return postos; },
+    setItems: function (v) { postos = dedupe(v); saveStorage(LS_POSTOS, postos); },
+    onChange: refreshTodosOsSelects,
+    listId: 'listaPostos', badgeId: 'badge-postos', buscaId: 'buscaPosto',
+    toggleId: 'btnTogglePostos', inputId: 'inputPosto', addBtnId: 'btnAddPosto',
+    icon: '&#x1F4CD;', label: 'Posto', emptyMsg: 'Nenhum posto cadastrado.'
+  });
+
+  /* ── Motivos: adicionar, editar e remover ── */
+  var motivExpandido = false;
+  var listaMotivos = document.getElementById('listaMotivos');
+  var badgeMotivos = document.getElementById('badge-motivos');
+  var buscaMotivo = document.getElementById('buscaMotivo');
+  var toggleMotivos = document.getElementById('btnToggleMotivos');
+  var inputMotivo = document.getElementById('inputMotivo');
+  var addMotivoBtn = document.getElementById('btnAddMotivo');
+
+  function renderMotivos() {
+    if (badgeMotivos) badgeMotivos.textContent = motivos.length || 0;
+    var termo = (buscaMotivo.value || '').trim().toLowerCase();
+    var fonte = termo ? motivos.filter(function (m) { return m.nome.toLowerCase().indexOf(termo) !== -1; }) : motivos;
+    if (!motivos.length) { listaMotivos.innerHTML = '<p class="empty-state">Nenhum motivo cadastrado.</p>'; return; }
+    if (!fonte.length) { listaMotivos.innerHTML = '<p class="empty-state">Nenhum resultado para "' + escHtml(termo) + '".</p>'; return; }
+    listaMotivos.innerHTML = sortAlpha(fonte).map(function (m) {
+      return '<div class="list-item" data-id="' + m.id + '">' +
+        '<span>&#x1F4AC; ' + escHtml(m.nome) + '</span>' +
+        '<div style="display:flex;gap:4px;flex-shrink:0;">' +
+          '<button class="btn-edit-item" data-id="' + m.id + '" title="Editar">&#x270F;&#xFE0F;</button>' +
+          '<button class="btn-remove" data-id="' + m.id + '" title="Remover">&#x2715;</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function atualizarVisibilidadeMotivos() {
+    var termo = (buscaMotivo.value || '').trim();
+    var visivel = motivExpandido || !!termo;
+    listaMotivos.classList.toggle('collapsed', !visivel);
+    buscaMotivo.classList.toggle('show', motivExpandido);
+    toggleMotivos.classList.toggle('active', motivExpandido);
+    toggleMotivos.innerHTML = motivExpandido ? '&#x1F648; Ocultar lista' : '&#x1F441;&#xFE0F; Mostrar lista';
+  }
+
+  function addMotivo() {
+    var nome = inputMotivo.value.trim();
+    if (!nome) return;
+    if (motivos.some(function (m) { return m.nome.toLowerCase() === nome.toLowerCase(); })) {
+      showToast('⚠️ Motivo já cadastrado.', 'error'); return;
+    }
+    motivos.push({ id: gerarId(), nome: nome });
+    saveStorage(LS_MOTIVOS, motivos);
+    inputMotivo.value = '';
+    renderMotivos();
+    refreshTodosOsSelects();
+    showToast('✅ Motivo adicionado.', 'success');
+  }
+
+  function editMotivo(id) {
+    var item = motivos.find(function (m) { return m.id === id; });
+    if (!item) return;
+    var novoNome = prompt('Editar motivo:', item.nome);
+    if (novoNome === null) return;
+    novoNome = novoNome.trim();
+    if (!novoNome) return;
+    if (motivos.some(function (m) { return m.id !== id && m.nome.toLowerCase() === novoNome.toLowerCase(); })) {
+      showToast('⚠️ Já existe um motivo com esse nome.', 'error'); return;
+    }
+    item.nome = novoNome;
+    saveStorage(LS_MOTIVOS, motivos);
+    renderMotivos();
+    refreshTodosOsSelects();
+    showToast('✅ Motivo atualizado.', 'success');
+  }
+
+  function removeMotivo(id) {
+    var item = motivos.find(function (m) { return m.id === id; });
+    if (!item) return;
+    if (!confirm('Remover o motivo "' + item.nome + '"?')) return;
+    motivos = motivos.filter(function (m) { return m.id !== id; });
+    saveStorage(LS_MOTIVOS, motivos);
+    renderMotivos();
+    refreshTodosOsSelects();
+    showToast('🗑️ Motivo removido.', 'success');
+  }
+
+  addMotivoBtn.addEventListener('click', addMotivo);
+  inputMotivo.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); addMotivo(); } });
+  toggleMotivos.addEventListener('click', function () {
+    motivExpandido = !motivExpandido;
+    if (!motivExpandido) buscaMotivo.value = '';
+    renderMotivos();
+    atualizarVisibilidadeMotivos();
+  });
+  buscaMotivo.addEventListener('input', function () { renderMotivos(); atualizarVisibilidadeMotivos(); });
+  listaMotivos.addEventListener('click', function (e) {
+    var editBtn = e.target.closest('.btn-edit-item');
+    var removeBtn = e.target.closest('.btn-remove');
+    if (editBtn) editMotivo(editBtn.dataset.id);
+    else if (removeBtn) removeMotivo(removeBtn.dataset.id);
+  });
+
+  renderMotivos();
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO — Aba Histórico Completo
+   Reúne todos os lançamentos de FT Pontual + Bico Fixo,
+   permite filtrar por tipo, período e busca livre, e exportar
+   para PDF, CSV e Excel.
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  var selTipo = document.getElementById('histTipo');
+  var selPeriodo = document.getElementById('histPeriodo');
+  var inputBusca = document.getElementById('histBusca');
+  var listaEl = document.getElementById('listaHistorico');
+  var summaryEl = document.getElementById('histSummary');
+  var btnPdf = document.getElementById('btnExportPdf');
+  var btnCsv = document.getElementById('btnExportCsv');
+  var btnExcel = document.getElementById('btnExportExcel');
+
+  var filtrados = [];
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+
+  function formatarDataBR(d, comHora) {
+    if (!(d instanceof Date) || isNaN(d.getTime())) return '—';
+    var s = pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear();
+    if (comHora) s += ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    return s;
+  }
+
+  function formatarValor(v) { return 'R$ ' + (v || 0).toFixed(2).replace('.', ','); }
+
+  function carimboArquivo() {
+    var d = new Date();
+    return d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '_' + pad2(d.getHours()) + pad2(d.getMinutes());
+  }
+
+  function baixarBlob(blob, nome) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = nome;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1200);
+  }
+
+  /* Reúne os lançamentos das duas fontes de dados (localStorage) num formato único */
+  function coletarHistorico() {
+    var fts = loadStorage('ft_lancamentos');
+    var bicosData = loadStorage('ft_bicos');
+    var registros = [];
+
+    fts.forEach(function (f) {
+      var dataObj = f.dataHora ? new Date(f.dataHora) : (f.criadoEm ? new Date(f.criadoEm) : null);
+      registros.push({
+        id: f.id,
+        tipoKey: 'ft',
+        tipoLabel: '&#x1F4CC; FT Pontual'.replace('&#x1F4CC;', '📌'),
+        dataObj: dataObj,
+        comHora: true,
+        colaborador: f.substitutoNome || '',
+        posto: f.postoNome || '',
+        detalheLabel: 'Motivo',
+        detalhe: f.motivo || '',
+        horario: f.horario || '',
+        valor: f.valor || 0,
+        observacao: f.observacao || '',
+        ausenteNome: f.colaboradorAusenteNome || ''
+      });
+    });
+
+    bicosData.forEach(function (b) {
+      var dataObj = b.dataInicio ? new Date(b.dataInicio + 'T00:00:00') : (b.criadoEm ? new Date(b.criadoEm) : null);
+      var diasTxt = (b.dias || []).join(', ');
+      registros.push({
+        id: b.id,
+        tipoKey: 'bico',
+        tipoLabel: '💠 Bico Fixo',
+        dataObj: dataObj,
+        comHora: false,
+        colaborador: b.colaboradorNome || '',
+        posto: b.postoNome || '',
+        detalheLabel: 'Dias / Status',
+        detalhe: (diasTxt || '—') + (b.ativo === false ? ' · Inativo' : ' · Ativo'),
+        horario: b.horario || '',
+        valor: b.valor || 0,
+        observacao: b.observacao || '',
+        ausenteNome: ''
+      });
+    });
+
+    return registros;
+  }
+
+  function periodoRange(periodo) {
+    var now = new Date();
+    var start, end;
+    if (periodo === 'mes') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (periodo === '7d') {
+      start = new Date(now); start.setDate(start.getDate() - 6); start.setHours(0, 0, 0, 0);
+      end = new Date(now); end.setHours(23, 59, 59, 999);
+    } else if (periodo === '30d') {
+      start = new Date(now); start.setDate(start.getDate() - 29); start.setHours(0, 0, 0, 0);
+      end = new Date(now); end.setHours(23, 59, 59, 999);
+    } else {
+      return null;
+    }
+    return { start: start, end: end };
+  }
+
+  function aplicarFiltros() {
+    var tipo = selTipo.value;
+    var periodo = selPeriodo.value;
+    var busca = inputBusca.value.toLowerCase().trim();
+
+    var registros = coletarHistorico();
+
+    if (tipo !== 'geral') registros = registros.filter(function (r) { return r.tipoKey === tipo; });
+
+    var range = periodoRange(periodo);
+    if (range) {
+      registros = registros.filter(function (r) {
+        return r.dataObj && !isNaN(r.dataObj.getTime()) && r.dataObj >= range.start && r.dataObj <= range.end;
+      });
+    }
+
+    if (busca) {
+      registros = registros.filter(function (r) {
+        return (r.colaborador || '').toLowerCase().indexOf(busca) !== -1 ||
+               (r.posto || '').toLowerCase().indexOf(busca) !== -1 ||
+               (r.detalhe || '').toLowerCase().indexOf(busca) !== -1 ||
+               (r.observacao || '').toLowerCase().indexOf(busca) !== -1;
+      });
+    }
+
+    registros.sort(function (a, b) {
+      var da = a.dataObj ? a.dataObj.getTime() : 0;
+      var db = b.dataObj ? b.dataObj.getTime() : 0;
+      return db - da;
+    });
+
+    return registros;
+  }
+
+  function renderResumo(registros) {
+    var totalValor = registros.reduce(function (s, r) { return s + (r.valor || 0); }, 0);
+    var qtdFt = registros.filter(function (r) { return r.tipoKey === 'ft'; }).length;
+    var qtdBico = registros.filter(function (r) { return r.tipoKey === 'bico'; }).length;
+
+    summaryEl.innerHTML =
+      '<div class="hist-summary-card"><div class="num">' + registros.length + '</div><div class="lbl">Total</div></div>' +
+      '<div class="hist-summary-card"><div class="num">' + qtdFt + '</div><div class="lbl">FT Pontual</div></div>' +
+      '<div class="hist-summary-card"><div class="num">' + qtdBico + '</div><div class="lbl">Bico Fixo</div></div>' +
+      '<div class="hist-summary-card"><div class="num">' + formatarValor(totalValor) + '</div><div class="lbl">Valor total</div></div>';
+  }
+
+  function renderLista(registros) {
+    if (!registros.length) {
+      listaEl.innerHTML = '<p class="empty-state">Nenhum lançamento encontrado para os filtros selecionados.</p>';
+      return;
+    }
+    listaEl.innerHTML = registros.map(function (r) {
+      return '<div class="hist-card tipo-' + r.tipoKey + '">' +
+        '<div class="hist-card-top">' +
+          '<span class="hist-badge">' + r.tipoLabel + '</span>' +
+          '<span class="hist-card-date">' + formatarDataBR(r.dataObj, r.comHora) + '</span>' +
+          '<div class="hist-card-actions">' +
+            '<button type="button" class="hist-edit-btn" data-tipo="' + r.tipoKey + '" data-id="' + r.id + '" title="Editar lançamento">&#x270F;&#xFE0F;</button>' +
+            '<button type="button" class="hist-delete-btn" data-tipo="' + r.tipoKey + '" data-id="' + r.id + '" title="Excluir lançamento">&#x1F5D1;&#xFE0F;</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="hist-card-title">&#x1F464; ' + escHtml(r.colaborador || '—') + '</div>' +
+        '<div class="hist-card-grid">' +
+          '<div class="field-mini"><span class="lbl">Posto</span><span class="val">' + escHtml(r.posto || '—') + '</span></div>' +
+          '<div class="field-mini"><span class="lbl">' + escHtml(r.detalheLabel) + '</span><span class="val">' + escHtml(r.detalhe || '—') + '</span></div>' +
+          '<div class="field-mini"><span class="lbl">Horário</span><span class="val">' + escHtml(r.horario || '—') + '</span></div>' +
+          '<div class="field-mini"><span class="lbl">Valor</span><span class="val hist-card-valor">' + formatarValor(r.valor) + '</span></div>' +
+        '</div>' +
+        (r.ausenteNome ? '<div class="hist-card-ausente">&#x1F6AB; Colaborador ausente: <strong>' + escHtml(r.ausenteNome) + '</strong> <span class="ausente-motivo">— ' + escHtml(r.detalhe || '') + '</span></div>' : '') +
+        (r.observacao ? '<div class="hist-card-obs">&#x1F4DD; ' + escHtml(r.observacao) + '</div>' : '') +
+      '</div>';
+    }).join('');
+  }
+
+  function render() {
+    filtrados = aplicarFiltros();
+    renderResumo(filtrados);
+    renderLista(filtrados);
+  }
+
+  window.renderHistoricoTab = render;
+
+  function excluirLancamento(tipo, id) {
+    var chave = tipo === 'ft' ? 'ft_lancamentos' : 'ft_bicos';
+    var arr = loadStorage(chave);
+    var item = arr.find(function (x) { return x.id === id; });
+    var nomeItem = item ? (item.substitutoNome || item.colaboradorNome || '') : '';
+    if (!confirm('Excluir definitivamente o lançamento' + (nomeItem ? ' de "' + nomeItem + '"' : '') + '? Essa ação não pode ser desfeita.')) return;
+    var novoArr = arr.filter(function (x) { return x.id !== id; });
+    saveStorage(chave, novoArr);
+    showToast('🗑️ Lançamento excluído.', 'success');
+    render();
+  }
+
+  listaEl.addEventListener('click', function (e) {
+    var btn = e.target.closest('.hist-edit-btn');
+    if (btn) { if (typeof window.abrirEdicaoLancamento === 'function') window.abrirEdicaoLancamento(btn.dataset.tipo, btn.dataset.id); return; }
+    var delBtn = e.target.closest('.hist-delete-btn');
+    if (delBtn) { excluirLancamento(delBtn.dataset.tipo, delBtn.dataset.id); return; }
+  });
+
+  selTipo.addEventListener('change', render);
+  selPeriodo.addEventListener('change', render);
+  inputBusca.addEventListener('input', render);
+
+  /* ── Exportação CSV ── */
+  function exportarCSV() {
+    if (!filtrados.length) { showToast('⚠️ Nenhum registro para exportar.', 'error'); return; }
+    var header = ['Tipo', 'Colaborador', 'Colaborador Ausente', 'Posto', 'Data', 'Horário', 'Motivo / Dias', 'Valor (R$)', 'Observação'];
+    var linhas = filtrados.map(function (r) {
+      return [
+        r.tipoKey === 'ft' ? 'FT Pontual' : 'Bico Fixo',
+        r.colaborador, r.ausenteNome || '', r.posto,
+        formatarDataBR(r.dataObj, r.comHora),
+        r.horario, r.detalhe,
+        (r.valor || 0).toFixed(2).replace('.', ','),
+        (r.observacao || '').replace(/\r?\n/g, ' ')
+      ];
+    });
+    var csv = [header].concat(linhas).map(function (row) {
+      return row.map(function (cell) { return '"' + String(cell == null ? '' : cell).replace(/"/g, '""') + '"'; }).join(';');
+    }).join('\r\n');
+    var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    baixarBlob(blob, 'historico_ft_' + carimboArquivo() + '.csv');
+    showToast('✅ CSV exportado com sucesso!', 'success');
+  }
+
+  /* ── Exportação Excel (.xlsx) ── */
+  function exportarExcel() {
+    if (!filtrados.length) { showToast('⚠️ Nenhum registro para exportar.', 'error'); return; }
+    if (typeof XLSX === 'undefined') { showToast('⚠️ Biblioteca de Excel não carregou. Verifique sua conexão.', 'error'); return; }
+    var dados = filtrados.map(function (r) {
+      return {
+        'Tipo': r.tipoKey === 'ft' ? 'FT Pontual' : 'Bico Fixo',
+        'Colaborador': r.colaborador,
+        'Colaborador Ausente': r.ausenteNome || '',
+        'Posto': r.posto,
+        'Data': formatarDataBR(r.dataObj, r.comHora),
+        'Horário': r.horario,
+        'Motivo / Dias': r.detalhe,
+        'Valor (R$)': r.valor || 0,
+        'Observação': r.observacao
+      };
+    });
+    var ws = XLSX.utils.json_to_sheet(dados);
+    ws['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 22 }, { wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 24 }, { wch: 12 }, { wch: 32 }];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Histórico');
+    XLSX.writeFile(wb, 'historico_ft_' + carimboArquivo() + '.xlsx');
+    showToast('✅ Excel exportado com sucesso!', 'success');
+  }
+
+  /* ── Exportação PDF ── */
+  function exportarPDF() {
+    if (!filtrados.length) { showToast('⚠️ Nenhum registro para exportar.', 'error'); return; }
+    if (typeof window.jspdf === 'undefined') { showToast('⚠️ Biblioteca de PDF não carregou. Verifique sua conexão.', 'error'); return; }
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({ orientation: 'landscape', unit: 'pt' });
+
+    doc.setFontSize(14);
+    doc.setTextColor(20, 20, 20);
+    doc.text('Histórico Completo · Nova FT', 40, 34);
+    doc.setFontSize(9);
+    doc.setTextColor(110);
+    doc.text('Gerado em ' + formatarDataBR(new Date(), true) + '  ·  ' + filtrados.length + ' registro(s)', 40, 48);
+
+    var linhas = filtrados.map(function (r) {
+      return [
+        r.tipoKey === 'ft' ? 'FT Pontual' : 'Bico Fixo',
+        r.colaborador, r.ausenteNome || '—', r.posto,
+        formatarDataBR(r.dataObj, r.comHora),
+        r.horario, r.detalhe,
+        formatarValor(r.valor),
+        r.observacao || ''
+      ];
+    });
+
+    doc.autoTable({
+      head: [['Tipo', 'Colaborador', 'Ausente', 'Posto', 'Data', 'Horário', 'Motivo / Dias', 'Valor', 'Observação']],
+      body: linhas,
+      startY: 60,
+      styles: { fontSize: 8, cellPadding: 5, overflow: 'linebreak' },
+      headStyles: { fillColor: [247, 183, 49], textColor: [13, 17, 23], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: { 8: { cellWidth: 150 } }
+    });
+
+    doc.save('historico_ft_' + carimboArquivo() + '.pdf');
+    showToast('✅ PDF exportado com sucesso!', 'success');
+  }
+
+  btnPdf.addEventListener('click', exportarPDF);
+  btnCsv.addEventListener('click', exportarCSV);
+  btnExcel.addEventListener('click', exportarExcel);
+
+  render();
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO — Aba Pagamentos
+   Ao selecionar um colaborador, reúne todas as FTs e Bicos
+   lançados em seu nome, mostra um dashboard (quantidade e
+   valor total) e permite gerar um recibo para impressão com
+   campo de assinatura.
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  var selColab = document.getElementById('pagColaborador');
+  var selPeriodo = document.getElementById('pagPeriodo');
+  var vazioEl = document.getElementById('pagVazio');
+  var conteudoEl = document.getElementById('pagConteudo');
+  var dashboardEl = document.getElementById('pagDashboard');
+  var listaEl = document.getElementById('listaPagamentos');
+  var btnRecibo = document.getElementById('btnGerarRecibo');
+  var reciboArea = document.getElementById('reciboPrintArea');
+
+  var registrosAtuais = [];
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+
+  function formatarDataBR(d, comHora) {
+    if (!(d instanceof Date) || isNaN(d.getTime())) return '—';
+    var s = pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear();
+    if (comHora) s += ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    return s;
+  }
+
+  function formatarValor(v) { return 'R$ ' + (v || 0).toFixed(2).replace('.', ','); }
+
+  function popularColaboradores() {
+    var atual = selColab.value;
+    selColab.innerHTML = '<option value="">-- Selecione --</option>' +
+      sortAlpha(colaboradores).map(function (c) { return '<option value="' + c.id + '">' + escHtml(c.nome) + '</option>'; }).join('');
+    if (colaboradores.some(function (c) { return c.id === atual; })) selColab.value = atual;
+  }
+
+  function periodoRange(periodo) {
+    var now = new Date();
+    var start, end;
+    if (periodo === 'mes') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (periodo === '7d') {
+      start = new Date(now); start.setDate(start.getDate() - 6); start.setHours(0, 0, 0, 0);
+      end = new Date(now); end.setHours(23, 59, 59, 999);
+    } else if (periodo === '30d') {
+      start = new Date(now); start.setDate(start.getDate() - 29); start.setHours(0, 0, 0, 0);
+      end = new Date(now); end.setHours(23, 59, 59, 999);
+    } else {
+      return null;
+    }
+    return { start: start, end: end };
+  }
+
+  /* Todos os lançamentos (FT + Bico) associados a um colaborador específico */
+  function coletarParaColaborador(colaboradorId) {
+    var fts = loadStorage('ft_lancamentos').filter(function (f) { return f.substitutoId === colaboradorId; });
+    var bicosData = loadStorage('ft_bicos').filter(function (b) { return b.colaboradorId === colaboradorId; });
+    var registros = [];
+
+    fts.forEach(function (f) {
+      var dataObj = f.dataHora ? new Date(f.dataHora) : (f.criadoEm ? new Date(f.criadoEm) : null);
+      registros.push({
+        id: f.id, tipoKey: 'ft', tipoLabel: '📌 FT Pontual', dataObj: dataObj, comHora: true,
+        posto: f.postoNome || '', detalheLabel: 'Motivo', detalhe: f.motivo || '',
+        horario: f.horario || '', valor: f.valor || 0, observacao: f.observacao || '', pago: !!f.pago,
+        ausenteNome: f.colaboradorAusenteNome || ''
+      });
+    });
+
+    bicosData.forEach(function (b) {
+      var dataObj = b.dataInicio ? new Date(b.dataInicio + 'T00:00:00') : (b.criadoEm ? new Date(b.criadoEm) : null);
+      registros.push({
+        id: b.id, tipoKey: 'bico', tipoLabel: '💠 Bico Fixo', dataObj: dataObj, comHora: false,
+        posto: b.postoNome || '', detalheLabel: 'Dias / Status',
+        detalhe: ((b.dias || []).join(', ') || '—') + (b.ativo === false ? ' · Inativo' : ' · Ativo'),
+        horario: b.horario || '', valor: b.valor || 0, observacao: b.observacao || '', pago: !!b.pago,
+        ausenteNome: ''
+      });
+    });
+
+    return registros;
+  }
+
+  function renderDashboard(registros, nomeColab) {
+    var totalValor = registros.reduce(function (s, r) { return s + (r.valor || 0); }, 0);
+    var totalPago = registros.filter(function (r) { return r.pago; }).reduce(function (s, r) { return s + (r.valor || 0); }, 0);
+    var totalPendente = totalValor - totalPago;
+    var qtdFt = registros.filter(function (r) { return r.tipoKey === 'ft'; }).length;
+    var qtdBico = registros.filter(function (r) { return r.tipoKey === 'bico'; }).length;
+
+    dashboardEl.innerHTML =
+      '<div class="pag-total-card"><div class="lbl">Total · ' + escHtml(nomeColab) + '</div><div class="num">' + formatarValor(totalValor) + '</div></div>' +
+      '<div class="cons-total-row">' +
+        '<div class="cons-total-card pago"><div class="lbl">Pago</div><div class="num">' + formatarValor(totalPago) + '</div></div>' +
+        '<div class="cons-total-card pendente"><div class="lbl">Pendente</div><div class="num">' + formatarValor(totalPendente) + '</div></div>' +
+      '</div>' +
+      '<div class="pag-stats-row">' +
+        '<div class="hist-summary-card"><div class="num">' + registros.length + '</div><div class="lbl">Lançamentos</div></div>' +
+        '<div class="hist-summary-card"><div class="num">' + qtdFt + '</div><div class="lbl">FT Pontual</div></div>' +
+        '<div class="hist-summary-card"><div class="num">' + qtdBico + '</div><div class="lbl">Bico Fixo</div></div>' +
+      '</div>';
+  }
+
+  function renderListaPagamentos(registros) {
+    if (!registros.length) {
+      listaEl.innerHTML = '<p class="empty-state">Nenhum lançamento encontrado para este colaborador no período selecionado.</p>';
+      return;
+    }
+    listaEl.innerHTML = registros.map(function (r) {
+      return '<div class="hist-card tipo-' + r.tipoKey + '">' +
+        '<div class="hist-card-top">' +
+          '<span class="hist-badge">' + r.tipoLabel + '</span>' +
+          '<span class="hist-card-date">' + formatarDataBR(r.dataObj, r.comHora) + '</span>' +
+          '<button type="button" class="hist-edit-btn" data-tipo="' + r.tipoKey + '" data-id="' + r.id + '" title="Editar lançamento">&#x270F;&#xFE0F;</button>' +
+          '<button type="button" class="pag-status-toggle ' + (r.pago ? 'pago' : 'pendente') + '" data-tipo="' + r.tipoKey + '" data-id="' + r.id + '">' +
+            (r.pago ? '&#x2705; Pago' : '&#x23F3; Pendente') +
+          '</button>' +
+        '</div>' +
+        '<div class="hist-card-grid">' +
+          '<div class="field-mini"><span class="lbl">Posto</span><span class="val">' + escHtml(r.posto || '—') + '</span></div>' +
+          '<div class="field-mini"><span class="lbl">' + escHtml(r.detalheLabel) + '</span><span class="val">' + escHtml(r.detalhe || '—') + '</span></div>' +
+          '<div class="field-mini"><span class="lbl">Horário</span><span class="val">' + escHtml(r.horario || '—') + '</span></div>' +
+          '<div class="field-mini"><span class="lbl">Valor</span><span class="val hist-card-valor">' + formatarValor(r.valor) + '</span></div>' +
+        '</div>' +
+        (r.ausenteNome ? '<div class="hist-card-ausente">&#x1F6AB; Colaborador ausente: <strong>' + escHtml(r.ausenteNome) + '</strong> <span class="ausente-motivo">— ' + escHtml(r.detalhe || '') + '</span></div>' : '') +
+        (r.observacao ? '<div class="hist-card-obs">📝 ' + escHtml(r.observacao) + '</div>' : '') +
+      '</div>';
+    }).join('');
+  }
+
+  function render() {
+    popularColaboradores();
+    var colabId = selColab.value;
+
+    if (!colabId) {
+      vazioEl.style.display = 'block';
+      conteudoEl.style.display = 'none';
+      registrosAtuais = [];
+      return;
+    }
+
+    var nomeColab = (colaboradores.find(function (c) { return c.id === colabId; }) || {}).nome || '';
+    var registros = coletarParaColaborador(colabId);
+
+    var range = periodoRange(selPeriodo.value);
+    if (range) {
+      registros = registros.filter(function (r) { return r.dataObj && !isNaN(r.dataObj.getTime()) && r.dataObj >= range.start && r.dataObj <= range.end; });
+    }
+
+    registros.sort(function (a, b) {
+      var da = a.dataObj ? a.dataObj.getTime() : 0;
+      var db = b.dataObj ? b.dataObj.getTime() : 0;
+      return db - da;
+    });
+
+    registrosAtuais = registros;
+
+    vazioEl.style.display = 'none';
+    conteudoEl.style.display = 'block';
+
+    renderDashboard(registros, nomeColab);
+    renderListaPagamentos(registros);
+  }
+
+  window.renderPagamentosTab = render;
+
+  /* Marca/desmarca um lançamento (FT ou Bico) como pago, direto no storage. */
+  function togglePago(tipoKey, id) {
+    var key = tipoKey === 'ft' ? 'ft_lancamentos' : 'ft_bicos';
+    var arr = loadStorage(key);
+    var item = arr.find(function (x) { return x.id === id; });
+    if (!item) return;
+    item.pago = !item.pago;
+    saveStorage(key, arr);
+    render();
+    if (typeof window.renderConsolidadoTab === 'function') window.renderConsolidadoTab();
+    showToast(item.pago ? '✅ Marcado como pago.' : '⏳ Marcado como pendente.', 'success');
+  }
+
+  listaEl.addEventListener('click', function (e) {
+    var editBtn = e.target.closest('.hist-edit-btn');
+    if (editBtn) {
+      if (typeof window.abrirEdicaoLancamento === 'function') window.abrirEdicaoLancamento(editBtn.dataset.tipo, editBtn.dataset.id);
+      return;
+    }
+    var btn = e.target.closest('.pag-status-toggle');
+    if (!btn) return;
+    togglePago(btn.dataset.tipo, btn.dataset.id);
+  });
+
+  selColab.addEventListener('change', render);
+  selPeriodo.addEventListener('change', render);
+
+  /* ── Geração do recibo em PDF ──
+     Antes isso montava um HTML e chamava window.print(), mas em algumas
+     WebViews Android (como a usada aqui pra "Salvar como PDF") a captura
+     da pré-visualização não é confiável: a tela do app ficava sendo
+     capturada no lugar do recibo, mesmo com o recibo chegando a aparecer
+     rapidamente na tela ("flash"). Para eliminar essa condição de corrida
+     de vez, o recibo agora é gerado como PDF diretamente via jsPDF —
+     o mesmo método já usado (e já comprovadamente funcional nesta mesma
+     WebView) pela exportação de Histórico — sem depender de window.print()
+     nem de esconder/mostrar telas do app. */
+  /* Desenha a logo oficial (hexágono + monograma "PJ") vetorialmente no PDF.
+     jsPDF não renderiza SVG/gradiente, então reconstruímos a mesma forma
+     do hexágono da logo oficial com preenchimento/traço sólidos. */
+  function desenharLogoPJ(doc, x, y, w, h) {
+    var sx = w / 100, sy = h / 110;
+    var deltas = [
+      [46 * sx, 24 * sy], [0, 54 * sy], [-46 * sx, 24 * sy],
+      [-46 * sx, -24 * sy], [0, -54 * sy], [46 * sx, -24 * sy]
+    ];
+    doc.setFillColor(10, 31, 61);
+    doc.setDrawColor(0, 200, 248);
+    doc.setLineWidth(1.1);
+    doc.lines(deltas, x + 50 * sx, y + 4 * sy, [1, 1], 'FD', true);
+
+    doc.setFontSize(h * 0.34);
+    doc.setTextColor(238, 244, 255);
+    doc.setFont(undefined, 'bold');
+    doc.text('PJ', x + w / 2, y + h * 0.62, { align: 'center' });
+  }
+
+  /* Desenha a logo oficial (hexágono + monograma "PJ") vetorialmente no PDF.
+     jsPDF não renderiza SVG/gradiente, então reconstruímos a mesma forma
+     do hexágono da logo oficial com preenchimento/traço sólidos. */
+  function desenharLogoPJ(doc, x, y, w, h) {
+    var sx = w / 100, sy = h / 110;
+    var deltas = [
+      [46 * sx, 24 * sy], [0, 54 * sy], [-46 * sx, 24 * sy],
+      [-46 * sx, -24 * sy], [0, -54 * sy], [46 * sx, -24 * sy]
+    ];
+    doc.setFillColor(10, 31, 61);
+    doc.setDrawColor(0, 200, 248);
+    doc.setLineWidth(1.1);
+    doc.lines(deltas, x + 50 * sx, y + 4 * sy, [1, 1], 'FD', true);
+
+    doc.setFontSize(h * 0.34);
+    doc.setTextColor(238, 244, 255);
+    doc.setFont(undefined, 'bold');
+    doc.text('PJ', x + w / 2, y + h * 0.62, { align: 'center' });
+  }
+
+  function gerarRecibo() {
+    var colabId = selColab.value;
+    if (!colabId) { showToast('⚠️ Selecione um colaborador primeiro.', 'error'); return; }
+    if (!registrosAtuais.length) { showToast('⚠️ Nenhum lançamento para gerar recibo.', 'error'); return; }
+    if (typeof window.jspdf === 'undefined') { showToast('⚠️ Biblioteca de PDF não carregou. Verifique sua conexão.', 'error'); return; }
+
+    var nomeColab = (colaboradores.find(function (c) { return c.id === colabId; }) || {}).nome || '';
+    var totalValor = registrosAtuais.reduce(function (s, r) { return s + (r.valor || 0); }, 0);
+    var periodoLabels = { mes: 'Mês atual', '7d': 'Últimos 7 dias', '30d': 'Últimos 30 dias', todos: 'Todos os períodos' };
+    var periodoLabel = periodoLabels[selPeriodo.value] || 'Todos os períodos';
+
+    var linhas = registrosAtuais.slice().sort(function (a, b) {
+      var da = a.dataObj ? a.dataObj.getTime() : 0;
+      var db = b.dataObj ? b.dataObj.getTime() : 0;
+      return da - db; /* ordem cronológica no recibo */
+    }).map(function (r) {
+      return [
+        formatarDataBR(r.dataObj, r.comHora),
+        r.posto || '—',
+        r.tipoKey === 'ft' ? 'FT Pontual' : 'Bico Fixo',
+        r.detalhe || '—',
+        r.ausenteNome || '—',
+        r.horario || '—',
+        formatarValor(r.valor)
+      ];
+    });
+
+  var agora = new Date();
+    var numeroRecibo = 'REC-' + agora.getFullYear() + pad2(agora.getMonth() + 1) + pad2(agora.getDate()) + '-' + pad2(agora.getHours()) + pad2(agora.getMinutes());
+
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    var pageW = doc.internal.pageSize.getWidth();
+    var marginX = 40;
+
+    /* Timbre */
+    var logoW = 30, logoH = 33, logoTextX = marginX + logoW + 12;
+    desenharLogoPJ(doc, marginX, 16, logoW, logoH);
+    doc.setFontSize(15);
+    doc.setTextColor(17, 17, 17);
+    doc.setFont(undefined, 'bold');
+    doc.text('PJ Tecnologia e Sistemas', logoTextX, 34);
+    doc.setFontSize(9.5);
+    doc.setTextColor(85);
+    doc.setFont(undefined, 'normal');
+    doc.text('Grupo M.S Segurança e Serviços', logoTextX, 48);
+
+    doc.setFontSize(12.5);
+    doc.setTextColor(17, 17, 17);
+    doc.setFont(undefined, 'bold');
+    doc.text('RECIBO DE PAGAMENTO', pageW - marginX, 46, { align: 'right' });
+    doc.setFontSize(9);
+    doc.setTextColor(110);
+    doc.setFont(undefined, 'normal');
+    doc.text(numeroRecibo, pageW - marginX, 60, { align: 'right' });
+
+    doc.setDrawColor(17, 17, 17);
+    doc.setLineWidth(1.4);
+    doc.line(marginX, 74, pageW - marginX, 74);
+
+    /* Grade de informações */
+    var infoY = 100;
+    var col2 = marginX + (pageW - marginX * 2) / 3;
+    var col3 = marginX + ((pageW - marginX * 2) / 3) * 2;
+    [
+      ['COLABORADOR', nomeColab, marginX],
+      ['PERÍODO', periodoLabel, col2],
+      ['EMITIDO EM', formatarDataBR(agora, true), col3]
+    ].forEach(function (item) {
+      doc.setFontSize(7.5);
+      doc.setTextColor(120);
+      doc.setFont(undefined, 'bold');
+      doc.text(item[0], item[2], infoY);
+      doc.setFontSize(10.5);
+      doc.setTextColor(17, 17, 17);
+      doc.setFont(undefined, 'bold');
+      doc.text(String(item[1]), item[2], infoY + 15);
+    });
+
+    /* Tabela de lançamentos */
+    doc.autoTable({
+      head: [['Data', 'Posto', 'Tipo', 'Motivo / Dias', 'Ausente', 'Horário', 'Valor']],
+      body: linhas,
+      startY: 132,
+      margin: { left: marginX, right: marginX },
+      styles: { fontSize: 8.5, cellPadding: 6, overflow: 'linebreak', textColor: [30, 30, 30] },
+      headStyles: { fillColor: [26, 26, 26], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [250, 250, 250] },
+      columnStyles: { 6: { halign: 'right', fontStyle: 'bold' } }
+    });
+
+    var afterTableY = doc.lastAutoTable.finalY + 22;
+
+    doc.setDrawColor(17, 17, 17);
+    doc.setLineWidth(1.4);
+    doc.line(marginX, afterTableY - 14, pageW - marginX, afterTableY - 14);
+    doc.setFontSize(9.5);
+    doc.setTextColor(60);
+    doc.setFont(undefined, 'bold');
+    doc.text('TOTAL A RECEBER', marginX, afterTableY);
+    doc.setFontSize(15);
+    doc.setTextColor(17, 17, 17);
+    doc.text(formatarValor(totalValor), pageW - marginX, afterTableY, { align: 'right' });
+
+    /* Declaração */
+    var declaracao = 'Declaro, para os devidos fins, ter prestado os serviços de segurança relacionados nesta relação e ter recebido o valor total acima discriminado, referente ao período indicado, nada mais havendo a reclamar a este título.';
+    doc.setFontSize(9.5);
+    doc.setTextColor(50);
+    doc.setFont(undefined, 'normal');
+    var declLines = doc.splitTextToSize(declaracao, pageW - marginX * 2);
+    doc.text(declLines, marginX, afterTableY + 34);
+
+    /* Assinatura */
+    var assY = afterTableY + 34 + declLines.length * 13 + 60;
+    var assCenterX = pageW / 2;
+    var assWidth = 220;
+    doc.setDrawColor(17, 17, 17);
+    doc.setLineWidth(1);
+    doc.line(assCenterX - assWidth / 2, assY, assCenterX + assWidth / 2, assY);
+    doc.setFontSize(10);
+    doc.setTextColor(17, 17, 17);
+    doc.setFont(undefined, 'bold');
+    doc.text(nomeColab, assCenterX, assY + 15, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setTextColor(110);
+    doc.setFont(undefined, 'normal');
+    doc.text('Assinatura do Colaborador  ·  Data: ____/____/______', assCenterX, assY + 27, { align: 'center' });
+
+    /* Rodapé */
+    var pageH = doc.internal.pageSize.getHeight();
+    doc.setDrawColor(220);
+    doc.setLineWidth(0.7);
+    doc.line(marginX, pageH - 40, pageW - marginX, pageH - 40);
+    doc.setFontSize(7.5);
+    doc.setTextColor(150);
+    doc.text('Documento gerado automaticamente pelo sistema Nova FT em ' + formatarDataBR(agora, true) + '.', pageW / 2, pageH - 28, { align: 'center' });
+
+    doc.save('recibo_' + nomeColab.toLowerCase().replace(/[^a-z0-9]+/g, '_') + '_' + agora.getFullYear() + pad2(agora.getMonth() + 1) + pad2(agora.getDate()) + '.pdf');
+    showToast('✅ Recibo em PDF gerado com sucesso!', 'success');
+  }
+
+  btnRecibo.addEventListener('click', gerarRecibo);
+
+  render();
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO — Edição de Lançamento (FT Pontual / Bico Fixo)
+   Acessado pelo lápis nos cards do Histórico e da aba Pagamentos.
+   Edita o registro diretamente no localStorage e chama
+   saveStorage(), que replica a alteração para o Firestore — a
+   mesma via usada por todo o app — refletindo em tempo real em
+   qualquer outro aparelho conectado (via onSnapshot) e em todas
+   as telas abertas neste aparelho.
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  var overlay = document.getElementById('modalEditarLancamento');
+  var titulo = document.getElementById('editModalTitulo');
+  var camposFt = document.getElementById('editCamposFt');
+  var camposBico = document.getElementById('editCamposBico');
+
+  /* Campos — FT */
+  var ftPosto = document.getElementById('editFtPosto');
+  var ftMotivo = document.getElementById('editFtMotivo');
+  var ftMotivoOutroWrap = document.getElementById('editFtMotivoOutroWrap');
+  var ftMotivoOutro = document.getElementById('editFtMotivoOutro');
+  var ftCampoAusente = document.getElementById('editFtCampoAusente');
+  var ftLabelAusente = document.getElementById('editFtLabelAusente');
+  var ftAusente = document.getElementById('editFtAusente');
+  var ftSubstituto = document.getElementById('editFtSubstituto');
+  var ftHorario = document.getElementById('editFtHorario');
+  var ftDataHora = document.getElementById('editFtDataHora');
+
+  /* Campos — Bico */
+  var bicoColaborador = document.getElementById('editBicoColaborador');
+  var bicoPosto = document.getElementById('editBicoPosto');
+  var bicoHorario = document.getElementById('editBicoHorario');
+  var bicoDias = document.getElementById('editBicoDias');
+  var bicoDataInicio = document.getElementById('editBicoDataInicio');
+  var bicoAtivo = document.getElementById('editBicoAtivo');
+
+  /* Campos comuns */
+  var comumObservacao = document.getElementById('editObservacao');
+  var comumValor = document.getElementById('editValor');
+
+  var btnFechar = document.getElementById('btnFecharEditModal');
+  var btnSalvar = document.getElementById('btnSalvarEdicao');
+
+  var tipoAtual = null;
+  var idAtual = null;
+
+  function normalizar(s) {
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+  var REGRAS_COLABORADOR_AUSENTE = [
+    { teste: function (m) { return m.indexOf('cobertura') !== -1 && m.indexOf('ferias') !== -1; }, label: 'Colaborador em Cobertura de Férias' },
+    { teste: function (m) { return m.indexOf('atestado') !== -1; }, label: 'Colaborador com Atestado' },
+    { teste: function (m) { return m.indexOf('falta') !== -1; }, label: 'Colaborador com Falta' },
+    { teste: function (m) { return m.indexOf('folga') !== -1 && m.indexOf('vigia') !== -1; }, label: 'Colaborador de Folga do Vigia' },
+    { teste: function (m) { return m.indexOf('remanej') !== -1; }, label: 'Colaborador Remanejado' },
+    { teste: function (m) { return m.indexOf('suspens') !== -1; }, label: 'Colaborador Suspenso' }
+  ];
+  function detectarRegraAusente(motivoTexto) {
+    var m = normalizar(motivoTexto);
+    for (var i = 0; i < REGRAS_COLABORADOR_AUSENTE.length; i++) {
+      if (REGRAS_COLABORADOR_AUSENTE[i].teste(m)) return REGRAS_COLABORADOR_AUSENTE[i];
+    }
+    return null;
+  }
+  function ftMotivoEfetivo() {
+    return ftMotivo.value === '__outro__' ? ftMotivoOutro.value.trim() : ftMotivo.value;
+  }
+  function atualizarFtCampoAusente(nomeAtualSelecionado) {
+    var regra = detectarRegraAusente(ftMotivoEfetivo());
+    var mostrar = !!regra;
+    ftCampoAusente.classList.toggle('hidden', !mostrar);
+    if (mostrar) {
+      ftLabelAusente.textContent = regra.label;
+      if (nomeAtualSelecionado !== undefined) ftAusente.value = nomeAtualSelecionado;
+    } else {
+      ftAusente.value = '';
+    }
+    ftAusente.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  ftMotivo.addEventListener('change', function () {
+    var outro = ftMotivo.value === '__outro__';
+    ftMotivoOutroWrap.classList.toggle('visible', outro);
+    if (!outro) ftMotivoOutro.value = '';
+    atualizarFtCampoAusente();
+  });
+  ftMotivoOutro.addEventListener('input', function () { atualizarFtCampoAusente(); });
+
+  function popularMotivoSelect(atual) {
+    ftMotivo.innerHTML = '<option value="">-- Selecione --</option>' +
+      sortAlpha(motivosParaFt()).map(function (m) { return '<option value="' + escHtml(m.nome) + '">' + escHtml(m.nome) + '</option>'; }).join('') +
+      '<option value="__outro__">&#x270F;&#xFE0F; Outro (digitar)</option>';
+    var existeOpcao = Array.prototype.some.call(ftMotivo.options, function (o) { return o.value === atual; });
+    ftMotivo.value = existeOpcao ? atual : '__outro__';
+    ftMotivo.dispatchEvent(new Event('change', { bubbles: true }));
+    if (!existeOpcao) {
+      ftMotivoOutro.value = atual || '';
+      ftMotivoOutroWrap.classList.add('visible');
+    }
+  }
+
+  function dias(bico) { return bico.dias || []; }
+
+  bicoDias.addEventListener('click', function (e) {
+    var chip = e.target.closest('.day-chip');
+    if (chip) chip.classList.toggle('active');
+  });
+  function diasSelecionadosBico() {
+    return Array.prototype.filter.call(bicoDias.querySelectorAll('.day-chip'), function (c) { return c.classList.contains('active'); })
+      .map(function (c) { return c.dataset.dia; });
+  }
+
+  function agoraLocalISOde(iso) {
+    var d = iso ? new Date(iso) : new Date();
+    if (isNaN(d.getTime())) d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  }
+
+  function abrir(tipo, id) {
+    var chave = tipo === 'ft' ? 'ft_lancamentos' : 'ft_bicos';
+    var arr = loadStorage(chave);
+    var item = arr.find(function (x) { return x.id === id; });
+    if (!item) { showToast('⚠️ Lançamento não encontrado (pode já ter sido removido).', 'error'); return; }
+
+    tipoAtual = tipo;
+    idAtual = id;
+
+    fillSelect('editFtPosto', postos, true);
+    fillSelect('editFtAusente', colaboradores, true);
+    fillSelect('editFtSubstituto', colaboradores, true);
+    fillSelect('editBicoColaborador', colaboradores, true);
+    fillSelect('editBicoPosto', postos, true);
+
+    comumObservacao.value = item.observacao || '';
+    comumValor.value = item.valor || '';
+
+    if (tipo === 'ft') {
+      titulo.innerHTML = '&#x270F;&#xFE0F; Editar FT Pontual';
+      camposFt.classList.remove('hidden');
+      camposBico.classList.add('hidden');
+
+      ftPosto.value = item.postoId || '';
+      ftPosto.dispatchEvent(new Event('change', { bubbles: true }));
+      popularMotivoSelect(item.motivo || '');
+      ftSubstituto.value = item.substitutoId || '';
+      ftSubstituto.dispatchEvent(new Event('change', { bubbles: true }));
+      ftHorario.value = item.horario || '';
+      ftDataHora.value = agoraLocalISOde(item.dataHora);
+      atualizarFtCampoAusente(item.colaboradorAusenteId || '');
+    } else {
+      titulo.innerHTML = '&#x270F;&#xFE0F; Editar Bico Fixo';
+      camposFt.classList.add('hidden');
+      camposBico.classList.remove('hidden');
+
+      bicoColaborador.value = item.colaboradorId || '';
+      bicoColaborador.dispatchEvent(new Event('change', { bubbles: true }));
+      bicoPosto.value = item.postoId || '';
+      bicoPosto.dispatchEvent(new Event('change', { bubbles: true }));
+      bicoHorario.value = item.horario || '';
+      bicoDataInicio.value = item.dataInicio || '';
+      bicoAtivo.checked = item.ativo !== false;
+      bicoDias.querySelectorAll('.day-chip').forEach(function (c) {
+        c.classList.toggle('active', dias(item).indexOf(c.dataset.dia) !== -1);
+      });
+    }
+
+    overlay.classList.add('show');
+  }
+  window.abrirEdicaoLancamento = abrir;
+
+  function fechar() {
+    overlay.classList.remove('show');
+    tipoAtual = null;
+    idAtual = null;
+  }
+  btnFechar.addEventListener('click', fechar);
+  overlay.addEventListener('click', function (e) { if (e.target === overlay) fechar(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && overlay.classList.contains('show')) fechar(); });
+
+  function atualizarTelasDependentes() {
+    if (typeof window.renderHistoricoTab === 'function') window.renderHistoricoTab();
+    if (typeof window.renderPagamentosTab === 'function') window.renderPagamentosTab();
+    if (typeof window.renderConsolidadoTab === 'function') window.renderConsolidadoTab();
+    if (typeof window.renderAlertasTab === 'function') window.renderAlertasTab();
+  }
+
+  function salvar() {
+    if (!tipoAtual || !idAtual) return;
+
+    if (tipoAtual === 'ft') {
+      var postoId = ftPosto.value;
+      var motivoVal = ftMotivoEfetivo();
+      var horarioVal = ftHorario.value.trim();
+      var substitutoId = ftSubstituto.value;
+      var dataHoraVal = ftDataHora.value;
+      var regraAusente = detectarRegraAusente(motivoVal);
+      var colaboradorAusenteId = regraAusente ? ftAusente.value : '';
+
+      if (!postoId || !motivoVal || !horarioVal || !substitutoId || !dataHoraVal) {
+        showToast('⚠️ Preencha todos os campos obrigatórios.', 'error');
+        return;
+      }
+      if (regraAusente && !colaboradorAusenteId) {
+        showToast('⚠️ Informe o ' + regraAusente.label.toLowerCase() + '.', 'error');
+        return;
+      }
+
+      var arrFt = loadStorage('ft_lancamentos');
+      var idxFt = arrFt.findIndex(function (x) { return x.id === idAtual; });
+      if (idxFt === -1) { showToast('⚠️ Lançamento não encontrado.', 'error'); fechar(); return; }
+
+      var original = arrFt[idxFt];
+      arrFt[idxFt] = {
+        id: original.id,
+        postoId: postoId,
+        postoNome: (postos.find(function (p) { return p.id === postoId; }) || {}).nome || '',
+        motivo: motivoVal,
+        observacao: comumObservacao.value.trim(),
+        horario: horarioVal,
+        substitutoId: substitutoId,
+        substitutoNome: (colaboradores.find(function (c) { return c.id === substitutoId; }) || {}).nome || '',
+        colaboradorAusenteId: colaboradorAusenteId,
+        colaboradorAusenteNome: colaboradorAusenteId ? ((colaboradores.find(function (c) { return c.id === colaboradorAusenteId; }) || {}).nome || '') : '',
+        valor: parseFloat(comumValor.value) || 0,
+        dataHora: dataHoraVal,
+        criadoEm: original.criadoEm || new Date().toISOString(),
+        pago: original.pago,
+        editadoEm: new Date().toISOString()
+      };
+      saveStorage('ft_lancamentos', arrFt);
+    } else {
+      var colaboradorId = bicoColaborador.value;
+      var postoIdB = bicoPosto.value;
+      var horarioValB = bicoHorario.value.trim();
+      var dataInicio = bicoDataInicio.value;
+      var diasSel = diasSelecionadosBico();
+
+      if (!colaboradorId || !postoIdB || !horarioValB || !dataInicio || !diasSel.length) {
+        showToast('⚠️ Preencha todos os campos obrigatórios (incluindo os dias da semana).', 'error');
+        return;
+      }
+
+      var arrBico = loadStorage('ft_bicos');
+      var idxBico = arrBico.findIndex(function (x) { return x.id === idAtual; });
+      if (idxBico === -1) { showToast('⚠️ Lançamento não encontrado.', 'error'); fechar(); return; }
+
+      var originalB = arrBico[idxBico];
+      arrBico[idxBico] = {
+        id: originalB.id,
+        colaboradorId: colaboradorId,
+        colaboradorNome: (colaboradores.find(function (c) { return c.id === colaboradorId; }) || {}).nome || '',
+        postoId: postoIdB,
+        postoNome: (postos.find(function (p) { return p.id === postoIdB; }) || {}).nome || '',
+        horario: horarioValB,
+        dias: diasSel,
+        dataInicio: dataInicio,
+        valor: parseFloat(comumValor.value) || 0,
+        observacao: comumObservacao.value.trim(),
+        ativo: bicoAtivo.checked,
+        criadoEm: originalB.criadoEm || new Date().toISOString(),
+        pago: originalB.pago,
+        editadoEm: new Date().toISOString()
+      };
+      saveStorage('ft_bicos', arrBico);
+    }
+
+    showToast('✅ Lançamento atualizado com sucesso!', 'success');
+    fechar();
+    atualizarTelasDependentes();
+  }
+  btnSalvar.addEventListener('click', salvar);
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO — Aba Consolidado
+   Resumo financeiro geral de todos os lançamentos (FT + Bico),
+   agrupado por colaborador e por posto, com totais pago/pendente.
+   Exibe na tela e permite exportar um relatório em PDF no padrão
+   profissional (mesmo timbre usado no recibo individual).
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  var selPeriodo = document.getElementById('consPeriodo');
+  var vazioEl = document.getElementById('consVazio');
+  var conteudoEl = document.getElementById('consConteudo');
+  var dashboardEl = document.getElementById('consDashboard');
+  var porColabEl = document.getElementById('consPorColaborador');
+  var porPostoEl = document.getElementById('consPorPosto');
+  var btnExportPDF = document.getElementById('btnExportConsolidadoPDF');
+
+  var agregadoAtual = null; // guarda o último resultado calculado, para o export em PDF
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+
+  function formatarDataBR(d, comHora) {
+    if (!(d instanceof Date) || isNaN(d.getTime())) return '—';
+    var s = pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear();
+    if (comHora) s += ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    return s;
+  }
+
+  function formatarValor(v) { return 'R$ ' + (v || 0).toFixed(2).replace('.', ','); }
+
+  function carimboArquivo() {
+    var d = new Date();
+    return d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate()) + '_' + pad2(d.getHours()) + pad2(d.getMinutes());
+  }
+
+  function periodoRange(periodo) {
+    var now = new Date();
+    var start, end;
+    if (periodo === 'mes') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (periodo === '7d') {
+      start = new Date(now); start.setDate(start.getDate() - 6); start.setHours(0, 0, 0, 0);
+      end = new Date(now); end.setHours(23, 59, 59, 999);
+    } else if (periodo === '30d') {
+      start = new Date(now); start.setDate(start.getDate() - 29); start.setHours(0, 0, 0, 0);
+      end = new Date(now); end.setHours(23, 59, 59, 999);
+    } else {
+      return null;
+    }
+    return { start: start, end: end };
+  }
+
+  /* Todos os lançamentos (FT + Bico) de todos os colaboradores */
+  function coletarTodos() {
+    var fts = loadStorage('ft_lancamentos');
+    var bicosData = loadStorage('ft_bicos');
+    var registros = [];
+
+    fts.forEach(function (f) {
+      var dataObj = f.dataHora ? new Date(f.dataHora) : (f.criadoEm ? new Date(f.criadoEm) : null);
+      var colab = colaboradores.find(function (c) { return c.id === f.substitutoId; });
+      registros.push({
+        tipoKey: 'ft', dataObj: dataObj,
+        colaboradorId: f.substitutoId || '', colaboradorNome: (colab && colab.nome) || 'Sem colaborador',
+        posto: f.postoNome || 'Sem posto', valor: f.valor || 0, pago: !!f.pago
+      });
+    });
+
+    bicosData.forEach(function (b) {
+      var dataObj = b.dataInicio ? new Date(b.dataInicio + 'T00:00:00') : (b.criadoEm ? new Date(b.criadoEm) : null);
+      var colab = colaboradores.find(function (c) { return c.id === b.colaboradorId; });
+      registros.push({
+        tipoKey: 'bico', dataObj: dataObj,
+        colaboradorId: b.colaboradorId || '', colaboradorNome: (colab && colab.nome) || 'Sem colaborador',
+        posto: b.postoNome || 'Sem posto', valor: b.valor || 0, pago: !!b.pago
+      });
+    });
+
+    return registros;
+  }
+
+  function agrupar(registros, chaveFn, nomeFn) {
+    var mapa = {};
+    var ordem = [];
+    registros.forEach(function (r) {
+      var chave = chaveFn(r);
+      if (!mapa[chave]) {
+        mapa[chave] = { nome: nomeFn(r), qtd: 0, totalPago: 0, totalPendente: 0, total: 0 };
+        ordem.push(chave);
+      }
+      var g = mapa[chave];
+      g.qtd++;
+      g.total += r.valor || 0;
+      if (r.pago) g.totalPago += r.valor || 0; else g.totalPendente += r.valor || 0;
+    });
+    return ordem.sort(function (a, b) { return mapa[a].nome.localeCompare(mapa[b].nome, 'pt-BR'); }).map(function (k) { return mapa[k]; });
+  }
+
+  function renderDashboard(registros) {
+    var totalValor = registros.reduce(function (s, r) { return s + (r.valor || 0); }, 0);
+    var totalPago = registros.filter(function (r) { return r.pago; }).reduce(function (s, r) { return s + (r.valor || 0); }, 0);
+    var totalPendente = totalValor - totalPago;
+
+    dashboardEl.innerHTML =
+      '<div class="pag-total-card"><div class="lbl">Total Geral</div><div class="num">' + formatarValor(totalValor) + '</div></div>' +
+      '<div class="cons-total-row">' +
+        '<div class="cons-total-card pago"><div class="lbl">Total Pago</div><div class="num">' + formatarValor(totalPago) + '</div></div>' +
+        '<div class="cons-total-card pendente"><div class="lbl">Total Pendente</div><div class="num">' + formatarValor(totalPendente) + '</div></div>' +
+      '</div>' +
+      '<div class="pag-stats-row">' +
+        '<div class="hist-summary-card"><div class="num">' + registros.length + '</div><div class="lbl">Lançamentos</div></div>' +
+      '</div>';
+  }
+
+  function renderGrupo(el, grupos) {
+    if (!grupos.length) { el.innerHTML = '<p class="empty-state">Nenhum registro no período selecionado.</p>'; return; }
+    el.innerHTML = grupos.map(function (g) {
+      return '<div class="cons-item">' +
+        '<div class="cons-item-top">' +
+          '<span class="cons-item-nome">' + escHtml(g.nome) + '</span>' +
+          '<span class="cons-item-qtd">' + g.qtd + ' lançamento(s) · ' + formatarValor(g.total) + '</span>' +
+        '</div>' +
+        '<div class="cons-item-valores">' +
+          '<div class="cons-valor-box pago"><div class="lbl">Pago</div><div class="num">' + formatarValor(g.totalPago) + '</div></div>' +
+          '<div class="cons-valor-box pendente"><div class="lbl">Pendente</div><div class="num">' + formatarValor(g.totalPendente) + '</div></div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function render() {
+    var registros = coletarTodos();
+
+    var range = periodoRange(selPeriodo.value);
+    if (range) {
+      registros = registros.filter(function (r) { return r.dataObj && !isNaN(r.dataObj.getTime()) && r.dataObj >= range.start && r.dataObj <= range.end; });
+    }
+
+    if (!registros.length) {
+      vazioEl.style.display = 'block';
+      conteudoEl.style.display = 'none';
+      agregadoAtual = null;
+      return;
+    }
+
+    vazioEl.style.display = 'none';
+    conteudoEl.style.display = 'block';
+
+    var porColaborador = agrupar(registros, function (r) { return r.colaboradorId || r.colaboradorNome; }, function (r) { return r.colaboradorNome; });
+    var porPosto = agrupar(registros, function (r) { return r.posto; }, function (r) { return r.posto; });
+
+    renderDashboard(registros);
+    renderGrupo(porColabEl, porColaborador);
+    renderGrupo(porPostoEl, porPosto);
+
+    agregadoAtual = { registros: registros, porColaborador: porColaborador, porPosto: porPosto };
+  }
+
+  window.renderConsolidadoTab = render;
+
+  selPeriodo.addEventListener('change', render);
+
+  /* Desenha a logo oficial (hexágono + monograma "PJ") vetorialmente no PDF. */
+  function desenharLogoPJ(doc, x, y, w, h) {
+    var sx = w / 100, sy = h / 110;
+    var deltas = [
+      [46 * sx, 24 * sy], [0, 54 * sy], [-46 * sx, 24 * sy],
+      [-46 * sx, -24 * sy], [0, -54 * sy], [46 * sx, -24 * sy]
+    ];
+    doc.setFillColor(10, 31, 61);
+    doc.setDrawColor(0, 200, 248);
+    doc.setLineWidth(1.1);
+    doc.lines(deltas, x + 50 * sx, y + 4 * sy, [1, 1], 'FD', true);
+
+    doc.setFontSize(h * 0.34);
+    doc.setTextColor(238, 244, 255);
+    doc.setFont(undefined, 'bold');
+    doc.text('PJ', x + w / 2, y + h * 0.62, { align: 'center' });
+  }
+
+  function exportarPDF() {
+    if (!agregadoAtual || !agregadoAtual.registros.length) { showToast('⚠️ Nenhum lançamento para exportar.', 'error'); return; }
+    if (typeof window.jspdf === 'undefined') { showToast('⚠️ Biblioteca de PDF não carregou. Verifique sua conexão.', 'error'); return; }
+
+    var periodoLabels = { mes: 'Mês atual', '7d': 'Últimos 7 dias', '30d': 'Últimos 30 dias', todos: 'Todos os períodos' };
+    var periodoLabel = periodoLabels[selPeriodo.value] || 'Todos os períodos';
+    var agora = new Date();
+
+    var registros = agregadoAtual.registros;
+    var totalValor = registros.reduce(function (s, r) { return s + (r.valor || 0); }, 0);
+    var totalPago = registros.filter(function (r) { return r.pago; }).reduce(function (s, r) { return s + (r.valor || 0); }, 0);
+    var totalPendente = totalValor - totalPago;
+
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
+    var pageW = doc.internal.pageSize.getWidth();
+    var marginX = 40;
+
+    /* Timbre */
+    var logoW = 30, logoH = 33, logoTextX = marginX + logoW + 12;
+    desenharLogoPJ(doc, marginX, 16, logoW, logoH);
+    doc.setFontSize(15);
+    doc.setTextColor(17, 17, 17);
+    doc.setFont(undefined, 'bold');
+    doc.text('PJ Tecnologia e Sistemas', logoTextX, 34);
+    doc.setFontSize(9.5);
+    doc.setTextColor(85);
+    doc.setFont(undefined, 'normal');
+    doc.text('Grupo M.S Segurança e Serviços', logoTextX, 48);
+
+    doc.setFontSize(12.5);
+    doc.setTextColor(17, 17, 17);
+    doc.setFont(undefined, 'bold');
+    doc.text('RELATÓRIO CONSOLIDADO', pageW - marginX, 46, { align: 'right' });
+    doc.setFontSize(9);
+    doc.setTextColor(110);
+    doc.setFont(undefined, 'normal');
+    doc.text('Período: ' + periodoLabel, pageW - marginX, 60, { align: 'right' });
+
+    doc.setDrawColor(17, 17, 17);
+    doc.setLineWidth(1.4);
+    doc.line(marginX, 74, pageW - marginX, 74);
+
+    /* Totais gerais */
+    var infoY = 100;
+    var col2 = marginX + (pageW - marginX * 2) / 3;
+    var col3 = marginX + ((pageW - marginX * 2) / 3) * 2;
+    [
+      ['TOTAL GERAL', formatarValor(totalValor), marginX],
+      ['TOTAL PAGO', formatarValor(totalPago), col2],
+      ['TOTAL PENDENTE', formatarValor(totalPendente), col3]
+    ].forEach(function (item) {
+      doc.setFontSize(7.5);
+      doc.setTextColor(120);
+      doc.setFont(undefined, 'bold');
+      doc.text(item[0], item[2], infoY);
+      doc.setFontSize(12.5);
+      doc.setTextColor(17, 17, 17);
+      doc.setFont(undefined, 'bold');
+      doc.text(String(item[1]), item[2], infoY + 16);
+    });
+
+    doc.setFontSize(7.5);
+    doc.setTextColor(150);
+    doc.setFont(undefined, 'normal');
+    doc.text('Emitido em ' + formatarDataBR(agora, true) + '  ·  ' + registros.length + ' lançamento(s)', marginX, infoY + 34);
+
+    /* Tabela — Por Colaborador */
+    doc.setFontSize(11);
+    doc.setTextColor(17, 17, 17);
+    doc.setFont(undefined, 'bold');
+    doc.text('Resumo por Colaborador', marginX, infoY + 58);
+
+    doc.autoTable({
+      head: [['Colaborador', 'Lançamentos', 'Pago', 'Pendente', 'Total']],
+      body: agregadoAtual.porColaborador.map(function (g) {
+        return [g.nome, String(g.qtd), formatarValor(g.totalPago), formatarValor(g.totalPendente), formatarValor(g.total)];
+      }),
+      startY: infoY + 68,
+      margin: { left: marginX, right: marginX },
+      styles: { fontSize: 8.5, cellPadding: 6, overflow: 'linebreak', textColor: [30, 30, 30] },
+      headStyles: { fillColor: [26, 26, 26], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [250, 250, 250] },
+      columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right', fontStyle: 'bold' } }
+    });
+
+    /* Tabela — Por Posto (nova página se necessário) */
+    var yAposColab = doc.lastAutoTable.finalY + 26;
+    var pageH = doc.internal.pageSize.getHeight();
+    if (yAposColab + 80 > pageH - 50) { doc.addPage(); yAposColab = 50; }
+
+    doc.setFontSize(11);
+    doc.setTextColor(17, 17, 17);
+    doc.setFont(undefined, 'bold');
+    doc.text('Resumo por Posto', marginX, yAposColab);
+
+    doc.autoTable({
+      head: [['Posto', 'Lançamentos', 'Pago', 'Pendente', 'Total']],
+      body: agregadoAtual.porPosto.map(function (g) {
+        return [g.nome, String(g.qtd), formatarValor(g.totalPago), formatarValor(g.totalPendente), formatarValor(g.total)];
+      }),
+      startY: yAposColab + 10,
+      margin: { left: marginX, right: marginX },
+      styles: { fontSize: 8.5, cellPadding: 6, overflow: 'linebreak', textColor: [30, 30, 30] },
+      headStyles: { fillColor: [26, 26, 26], textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [250, 250, 250] },
+      columnStyles: { 1: { halign: 'center' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right', fontStyle: 'bold' } }
+    });
+
+    /* Rodapé em todas as páginas */
+    var totalPaginas = doc.internal.getNumberOfPages();
+    for (var p = 1; p <= totalPaginas; p++) {
+      doc.setPage(p);
+      var ph = doc.internal.pageSize.getHeight();
+      var pw = doc.internal.pageSize.getWidth();
+      doc.setDrawColor(220);
+      doc.setLineWidth(0.7);
+      doc.line(marginX, ph - 40, pw - marginX, ph - 40);
+      doc.setFontSize(7.5);
+      doc.setTextColor(150);
+      doc.setFont(undefined, 'normal');
+      doc.text('Documento gerado automaticamente pelo sistema Nova FT em ' + formatarDataBR(agora, true) + '.  ·  Página ' + p + '/' + totalPaginas, pw / 2, ph - 28, { align: 'center' });
+    }
+
+    doc.save('consolidado_ft_' + carimboArquivo() + '.pdf');
+    showToast('✅ Consolidado em PDF gerado com sucesso!', 'success');
+  }
+
+  btnExportPDF.addEventListener('click', exportarPDF);
+
+  render();
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO — ALERTAS DE FT (detecção automática de pendências)
+   Monitora postos configurados e, com base na escala real de cada
+   um (horário de entrada/rendição por dia da semana, turno Dia
+   e/ou Noite, e regra Par/Ímpar/Todo), verifica se já existe FT
+   lançada para o período. Se não houver, dispara um alerta
+   flutuante agrupado por período (Dia/Noite) com os postos
+   pendentes, permitindo "Lembrar em 1h" ou marcar "Ciente".
+   ════════════════════════════════════════════════════════════ */
+var AlertasModule = (function () {
+  'use strict';
+
+  var LS_CONFIG = 'ft_alertas_config';
+  var LS_POSTOS = 'ft_alertas_postos_v2';
+  var LS_CIENTE = 'ft_alertas_ciente';
+
+  var DIA_ORDEM  = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+  var DIA_LABEL  = { DOM: 'Dom', SEG: 'Seg', TER: 'Ter', QUA: 'Qua', QUI: 'Qui', SEX: 'Sex', SAB: 'Sáb' };
+  var TOLERANCIA_ALERTA_MIN = 5; // só considera pendente 5min após o horário configurado
+
+  function loadJSON(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (e) { return fallback; }
+  }
+  function persist(key, data) { try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) {} }
+
+  var config = loadJSON(LS_CONFIG, { diaAtivo: true, noiteAtivo: true });
+  if (typeof config.diaAtivo !== 'boolean') config.diaAtivo = true;
+  if (typeof config.noiteAtivo !== 'boolean') config.noiteAtivo = true;
+  var postosMonitorados = loadJSON(LS_POSTOS, []);
+  var ciente = loadJSON(LS_CIENTE, {});
+
+  function saveConfig() { persist(LS_CONFIG, config); }
+  saveConfig();
+  function savePostos() {
+    persist(LS_POSTOS, postosMonitorados);
+    if (window.FTCloud) window.FTCloud.push(LS_POSTOS, postosMonitorados);
+  }
+  function aplicarRemoto(valor) {
+    postosMonitorados = (valor || []).map(garantirEstrutura);
+    renderPostosMonitorados(); renderInfoBox(); popularSelectEscala();
+  }
+  function saveCiente() { persist(LS_CIENTE, ciente); }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function fmtBR(ymdStr) { var p = ymdStr.split('-'); return p[2] + '/' + p[1]; }
+  function horaAtualStr() { var d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function diaSemanaKey(d) { return DIA_ORDEM[d.getDay()]; }
+  function addDias(d, n) { var r = new Date(d); r.setDate(r.getDate() + n); return r; }
+
+  function somarMinutosHorario(hhmm, minutos) {
+    var m = /^(\d{1,2}):(\d{2})/.exec(String(hhmm || '').trim());
+    if (!m) return hhmm;
+    var total = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + minutos;
+    total = ((total % 1440) + 1440) % 1440;
+    return pad(Math.floor(total / 60)) + ':' + pad(total % 60);
+  }
+
+  function regraAplicaHoje(regra, data) {
+    if (!regra || regra === 'todos') return true;
+    var par = (data.getDate() % 2 === 0);
+    return regra === 'par' ? par : !par;
+  }
+
+  function novaEscalaVazia() {
+    var o = {};
+    DIA_ORDEM.forEach(function (d) { o[d] = ''; });
+    return o;
+  }
+
+  function garantirEstrutura(p) {
+    p.escalaDia = p.escalaDia || novaEscalaVazia();
+    p.escalaNoite = p.escalaNoite || novaEscalaVazia();
+    p.escalaDiaFim = p.escalaDiaFim || novaEscalaVazia();
+    p.escalaNoiteFim = p.escalaNoiteFim || novaEscalaVazia();
+    DIA_ORDEM.forEach(function (d) {
+      if (!p.escalaDia[d]) p.escalaDia[d] = '';
+      if (!p.escalaNoite[d]) p.escalaNoite[d] = '';
+      if (!p.escalaDiaFim[d]) p.escalaDiaFim[d] = '';
+      if (!p.escalaNoiteFim[d]) p.escalaNoiteFim[d] = '';
+    });
+    if (typeof p.ativoDia !== 'boolean') p.ativoDia = true;
+    if (typeof p.ativoNoite !== 'boolean') p.ativoNoite = true;
+    if (typeof p.ativo !== 'boolean') p.ativo = true;
+    if (!p.regra) p.regra = 'todos';
+    return p;
+  }
+  postosMonitorados.forEach(garantirEstrutura);
+
+  function agruparEscala(escala, escalaFim) {
+    var grupos = [];
+    DIA_ORDEM.forEach(function (dia) {
+      var entrada = escala[dia] || '';
+      var saida = (escalaFim && escalaFim[dia]) || '';
+      var valor = entrada ? (entrada + (saida ? '→' + saida : '')) : '—';
+      var ultimo = grupos[grupos.length - 1];
+      if (ultimo && ultimo.valor === valor) { ultimo.dias.push(dia); }
+      else { grupos.push({ valor: valor, dias: [dia] }); }
+    });
+    return grupos.map(function (g) {
+      var label = g.dias.length > 1 ? DIA_LABEL[g.dias[0]] + '–' + DIA_LABEL[g.dias[g.dias.length - 1]] : DIA_LABEL[g.dias[0]];
+      return label + ' ' + (g.valor === '—' ? '(não configurado)' : g.valor + 'h');
+    }).join(', ');
+  }
+
+  function renderInfoBox() {
+    var el = document.getElementById('alertasInfoLista');
+    if (!el) return;
+    var ativos = postosMonitorados.filter(function (p) { return p.ativo; });
+    if (!ativos.length) { el.innerHTML = '<span class="info-posto-linha">Nenhum posto monitorado ainda.</span>'; return; }
+    el.innerHTML = ativos.map(function (p) {
+      var partes = [];
+      if (p.ativoDia) partes.push('Dia: ' + agruparEscala(p.escalaDia, p.escalaDiaFim));
+      if (p.ativoNoite) partes.push('Noite: ' + agruparEscala(p.escalaNoite, p.escalaNoiteFim));
+      var regraTxt = p.regra === 'par' ? ' · FT apenas em dias pares' : p.regra === 'impar' ? ' · FT apenas em dias ímpares' : '';
+      return '<div class="info-posto-linha">&#x1F4CD; <strong>' + escHtml(p.nome) + '</strong>: ' + (partes.join(' / ') || 'sem escala definida') + regraTxt + '</div>';
+    }).join('');
+  }
+
+  function renderPeriodoToggle() {
+    var bDia = document.getElementById('btnPeriodoDia');
+    var bNoite = document.getElementById('btnPeriodoNoite');
+    if (!bDia || !bNoite) return;
+    bDia.classList.toggle('on', !!config.diaAtivo);
+    bDia.querySelector('.periodo-status').textContent = config.diaAtivo ? 'Ativo' : 'Inativo';
+    bNoite.classList.toggle('on', !!config.noiteAtivo);
+    bNoite.querySelector('.periodo-status').textContent = config.noiteAtivo ? 'Ativo' : 'Inativo';
+  }
+  document.getElementById('btnPeriodoDia').addEventListener('click', function () {
+    config.diaAtivo = !config.diaAtivo; saveConfig(); renderPeriodoToggle();
+  });
+  document.getElementById('btnPeriodoNoite').addEventListener('click', function () {
+    config.noiteAtivo = !config.noiteAtivo; saveConfig(); renderPeriodoToggle();
+  });
+
+  function renderPostosMonitorados() {
+    var el = document.getElementById('listaPostosMonitorados');
+    if (!el) return;
+    if (!postosMonitorados.length) { el.innerHTML = '<p class="empty-state">Nenhum posto monitorado ainda.</p>'; return; }
+    el.innerHTML = sortAlpha(postosMonitorados).map(function (p) {
+      return '<div class="posto-monitor-card ' + (p.ativo ? '' : 'inativo') + '" data-id="' + p.id + '">' +
+        '<div class="posto-monitor-head">' +
+          '<span class="posto-monitor-nome">' + escHtml(p.nome) + '</span>' +
+          '<div class="posto-monitor-actions">' +
+            '<button type="button" class="icon-toggle-btn ' + (p.ativoDia ? 'on-dia' : '') + '" data-acao="dia" title="Turno Dia">&#x2600;&#xFE0F;</button>' +
+            '<button type="button" class="icon-toggle-btn ' + (p.ativoNoite ? 'on-noite' : '') + '" data-acao="noite" title="Turno Noite">&#x1F319;</button>' +
+            '<button type="button" class="icon-toggle-btn ' + (p.ativo ? 'on-ativo' : '') + '" data-acao="ativo" title="Ativar/Desativar">&#x2705;</button>' +
+            '<button type="button" class="icon-toggle-btn btn-remove-posto" data-acao="remover" title="Remover">&#x2715;</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="regra-dias-row">' +
+          '<button type="button" data-regra="par" class="' + (p.regra === 'par' ? 'active' : '') + '">&#x25CF; Par</button>' +
+          '<button type="button" data-regra="impar" class="' + (p.regra === 'impar' ? 'active' : '') + '">&#x25CB; Ímpar</button>' +
+          '<button type="button" data-regra="todos" class="' + (p.regra === 'todos' ? 'active' : '') + '">&#x25CF; Todo</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function encontrarPosto(id) { return postosMonitorados.find(function (p) { return p.id === id; }); }
+
+  document.getElementById('listaPostosMonitorados').addEventListener('click', function (e) {
+    var card = e.target.closest('.posto-monitor-card');
+    if (!card) return;
+    var p = encontrarPosto(card.dataset.id);
+    if (!p) return;
+
+    var btnAcao = e.target.closest('[data-acao]');
+    if (btnAcao) {
+      var acao = btnAcao.dataset.acao;
+      if (acao === 'dia') p.ativoDia = !p.ativoDia;
+      else if (acao === 'noite') p.ativoNoite = !p.ativoNoite;
+      else if (acao === 'ativo') p.ativo = !p.ativo;
+      else if (acao === 'remover') {
+        if (!confirm('Remover o posto "' + p.nome + '" do monitoramento?')) return;
+        postosMonitorados = postosMonitorados.filter(function (x) { return x.id !== p.id; });
+      }
+      savePostos(); renderPostosMonitorados(); renderInfoBox(); popularSelectEscala();
+      return;
+    }
+    var btnRegra = e.target.closest('[data-regra]');
+    if (btnRegra) {
+      p.regra = btnRegra.dataset.regra;
+      savePostos(); renderPostosMonitorados(); renderInfoBox();
+    }
+  });
+
+  document.getElementById('btnAddPostoMonitorado').addEventListener('click', function () {
+    var input = document.getElementById('inputPostoMonitorado');
+    var nome = input.value.trim();
+    if (!nome) { showToast('⚠️ Informe o nome do posto.', 'error'); return; }
+    if (postosMonitorados.some(function (p) { return p.nome.toLowerCase() === nome.toLowerCase(); })) {
+      showToast('⚠️ Este posto já está monitorado.', 'error'); return;
+    }
+    postosMonitorados.push(garantirEstrutura({ id: gerarId(), nome: nome }));
+    savePostos();
+    input.value = '';
+    renderPostosMonitorados(); renderInfoBox(); popularSelectEscala();
+    showToast('✅ Posto adicionado ao monitoramento.', 'success');
+  });
+  document.getElementById('inputPostoMonitorado').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btnAddPostoMonitorado').click(); }
+  });
+
+  function popularSelectEscala() {
+    var sel = document.getElementById('escalaSelectPosto');
+    var prev = sel.value;
+    sel.innerHTML = '<option value="">— Selecione um posto —</option>' +
+      sortAlpha(postosMonitorados).map(function (p) { return '<option value="' + p.id + '">' + escHtml(p.nome) + '</option>'; }).join('');
+    sel.value = prev;
+  }
+
+  function renderCamposEscala(containerId, escala) {
+    var el = document.getElementById(containerId);
+    el.innerHTML = DIA_ORDEM.map(function (d) {
+      return '<div class="escala-dia-linha"><span class="escala-dia-label">' + DIA_LABEL[d] + '</span>' +
+        '<input type="time" data-dia="' + d + '" value="' + escHtml(escala[d] || '') + '"></div>';
+    }).join('');
+  }
+
+  var editandoEscalaId = null;
+
+  function abrirModalEscala(id) {
+    var p = encontrarPosto(id);
+    if (!p) return;
+    editandoEscalaId = id;
+    document.getElementById('modalEscalaTitulo').textContent = '🕐 Escala — ' + p.nome;
+    renderCamposEscala('escalaCamposDia', p.escalaDia);
+    renderCamposEscala('escalaCamposDiaFim', p.escalaDiaFim);
+    renderCamposEscala('escalaCamposNoite', p.escalaNoite);
+    renderCamposEscala('escalaCamposNoiteFim', p.escalaNoiteFim);
+    document.getElementById('modalEscala').classList.add('show');
+  }
+  function fecharModalEscala() { document.getElementById('modalEscala').classList.remove('show'); editandoEscalaId = null; }
+
+  document.getElementById('btnEditarEscala').addEventListener('click', function () {
+    var id = document.getElementById('escalaSelectPosto').value;
+    if (!id) { showToast('⚠️ Selecione um posto para editar a escala.', 'error'); return; }
+    abrirModalEscala(id);
+  });
+  document.getElementById('btnFecharModalEscala').addEventListener('click', fecharModalEscala);
+  document.getElementById('modalEscala').addEventListener('click', function (e) { if (e.target === this) fecharModalEscala(); });
+
+  function aplicarTodos(containerId) {
+    var primeiro = document.querySelector('#' + containerId + ' input[data-dia="SEG"]').value;
+    document.querySelectorAll('#' + containerId + ' input').forEach(function (inp) { inp.value = primeiro; });
+  }
+  document.getElementById('btnAplicarTodosDia').addEventListener('click', function () { aplicarTodos('escalaCamposDia'); });
+  document.getElementById('btnAplicarTodosDiaFim').addEventListener('click', function () { aplicarTodos('escalaCamposDiaFim'); });
+  document.getElementById('btnAplicarTodosNoite').addEventListener('click', function () { aplicarTodos('escalaCamposNoite'); });
+  document.getElementById('btnAplicarTodosNoiteFim').addEventListener('click', function () { aplicarTodos('escalaCamposNoiteFim'); });
+
+  document.getElementById('btnSalvarEscala').addEventListener('click', function () {
+    var p = encontrarPosto(editandoEscalaId);
+    if (!p) return;
+    document.querySelectorAll('#escalaCamposDia input').forEach(function (inp) { p.escalaDia[inp.dataset.dia] = inp.value || ''; });
+    document.querySelectorAll('#escalaCamposDiaFim input').forEach(function (inp) { p.escalaDiaFim[inp.dataset.dia] = inp.value || ''; });
+    document.querySelectorAll('#escalaCamposNoite input').forEach(function (inp) { p.escalaNoite[inp.dataset.dia] = inp.value || ''; });
+    document.querySelectorAll('#escalaCamposNoiteFim input').forEach(function (inp) { p.escalaNoiteFim[inp.dataset.dia] = inp.value || ''; });
+    savePostos();
+    renderInfoBox();
+    fecharModalEscala();
+    showToast('✅ Escala salva.', 'success');
+  });
+
+  document.getElementById('btnFecharAlertas').addEventListener('click', function () {
+    var btnFt = document.querySelector('.tab-btn[data-tab="tab-ft"]');
+    if (btnFt) btnFt.click();
+  });
+  document.getElementById('btnTestarAlerta').addEventListener('click', function () {
+    var pendencias = calcularPendencias(true);
+    if (!pendencias.dia.length && !pendencias.noite.length) {
+      showToast('✅ Nenhuma FT pendente no momento — tudo em dia.', 'success');
+      return;
+    }
+    exibirAlertaFlutuante(pendencias);
+  });
+
+  function refresh() {
+    renderInfoBox();
+    renderPeriodoToggle();
+    renderPostosMonitorados();
+    popularSelectEscala();
+  }
+  window.renderAlertasTab = refresh;
+
+  // ════════════════════════════════════════════════════════
+  // MOTOR DE DETECÇÃO — verifica FT lançada x escala real
+  // ════════════════════════════════════════════════════════
+  function classificarTurno(horarioStr) {
+    var m = /^(\d{1,2}):/.exec(String(horarioStr || '').trim());
+    if (!m) return null;
+    var h = parseInt(m[1], 10);
+    return (h >= 5 && h < 17) ? 'dia' : 'noite';
+  }
+
+  function getRegistrosFT() { return loadJSON('ft_lancamentos', []); }
+
+  function dataRefFT(ft) {
+    var iso = ft.dataHora || ft.criadoEm;
+    if (!iso) return null;
+    var d = new Date(iso);
+    return isNaN(d.getTime()) ? null : ymd(d);
+  }
+
+  function existeFT(nomePosto, periodo, dataAlvo) {
+    var registros = getRegistrosFT();
+    var nomeNorm = (nomePosto || '').trim().toLowerCase();
+    var jaLancado = registros.some(function (ft) {
+      if ((ft.postoNome || '').trim().toLowerCase() !== nomeNorm) return false;
+      if (classificarTurno(ft.horario) !== periodo) return false;
+      return dataRefFT(ft) === dataAlvo;
+    });
+    if (jaLancado) return true;
+    return cobertoPorBicoFixo(nomePosto, periodo, dataAlvo);
+  }
+
+  function cobertoPorBicoFixo(nomePosto, periodo, dataAlvoStr) {
+    var bicos = loadJSON('ft_bicos', []);
+    if (!bicos.length) return false;
+    var d = new Date(dataAlvoStr + 'T00:00:00');
+    if (isNaN(d.getTime())) return false;
+    var diaKey = diaSemanaKey(d);
+    var nomeNorm = (nomePosto || '').trim().toLowerCase();
+    return bicos.some(function (b) {
+      if (!b.ativo) return false;
+      if ((b.postoNome || '').trim().toLowerCase() !== nomeNorm) return false;
+      if ((b.dias || []).indexOf(diaKey) === -1) return false;
+      if (b.dataInicio && dataAlvoStr < b.dataInicio) return false;
+      return classificarTurno(b.horario) === periodo;
+    });
+  }
+
+  function estaCienteOuAdiado(chaveId, agora) {
+    var reg = ciente[chaveId];
+    if (!reg || !reg.ate) return false;
+    return agora.getTime() < new Date(reg.ate).getTime();
+  }
+
+  function calcularPendencias(forcarIgnorarCiente) {
+    var agoraRef = new Date();
+    var horaHoje = horaAtualStr();
+    var resultado = { dia: [], noite: [] };
+
+    for (var offset = 0; offset <= 2; offset++) {
+      (function (offset) {
+        var dataRef = addDias(agoraRef, -offset);
+        var dataRefStr = ymd(dataRef);
+        var diaRefKey = diaSemanaKey(dataRef);
+        var diaSeguinteKey = diaSemanaKey(addDias(dataRef, 1));
+        var ehHoje = offset === 0;
+
+        postosMonitorados.forEach(function (p) {
+          if (!p.ativo) return;
+          if (!regraAplicaHoje(p.regra, dataRef)) return;
+
+          if (p.ativoDia && config.diaAtivo) {
+            var entradaDia = p.escalaDia[diaRefKey];
+            var jaPassouDia = ehHoje ? (horaHoje >= somarMinutosHorario(entradaDia, TOLERANCIA_ALERTA_MIN)) : true;
+            if (entradaDia && jaPassouDia) {
+              var chaveDia = p.id + '_dia_' + dataRefStr;
+              if (forcarIgnorarCiente || !estaCienteOuAdiado(chaveDia, agoraRef)) {
+                if (!existeFT(p.nome, 'dia', dataRefStr)) {
+                  var fimDia = p.escalaDiaFim[diaRefKey] || ((p.ativoNoite && p.escalaNoite[diaRefKey]) ? p.escalaNoite[diaRefKey] : '18:00');
+                  resultado.dia.push({
+                    id: p.id, chave: chaveDia, nome: p.nome, periodo: 'dia',
+                    inicio: entradaDia, fim: fimDia, cruzaMeiaNoite: false, refData: dataRefStr
+                  });
+                }
+              }
+            }
+          }
+
+          if (p.ativoNoite && config.noiteAtivo) {
+            var entradaNoite = p.escalaNoite[diaRefKey];
+            var jaPassouNoite = ehHoje ? (horaHoje >= somarMinutosHorario(entradaNoite, TOLERANCIA_ALERTA_MIN)) : true;
+            if (entradaNoite && jaPassouNoite) {
+              var chaveNoite = p.id + '_noite_' + dataRefStr;
+              if (forcarIgnorarCiente || !estaCienteOuAdiado(chaveNoite, agoraRef)) {
+                if (!existeFT(p.nome, 'noite', dataRefStr)) {
+                  var fimNoite = p.escalaNoiteFim[diaRefKey] || ((p.ativoDia && p.escalaDia[diaSeguinteKey]) ? p.escalaDia[diaSeguinteKey] : '07:00');
+                  resultado.noite.push({
+                    id: p.id, chave: chaveNoite, nome: p.nome, periodo: 'noite',
+                    inicio: entradaNoite, fim: fimNoite, cruzaMeiaNoite: true, refData: dataRefStr
+                  });
+                }
+              }
+            }
+          }
+        });
+      })(offset);
+    }
+
+    return resultado;
+  }
+
+  var alertaFlutuanteAberto = false;
+
+  function beep() {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      var ctx = new Ctx();
+      var osc = ctx.createOscillator(); var gain = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.5);
+    } catch (e) { /* áudio é apenas reforço opcional */ }
+  }
+
+  function notificarSistema(qtd) {
+    try {
+      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+      new Notification('🔔 FTs pendentes', { body: qtd + ' posto(s) sem FT lançada para o período.', tag: 'ft-alertas-pendencias' });
+    } catch (e) {}
+  }
+
+  function irParaLancamento(nomePosto) {
+    var btnFt = document.querySelector('.tab-btn[data-tab="tab-ft"]');
+    if (btnFt) btnFt.click();
+    setTimeout(function () {
+      var sel = document.getElementById('posto');
+      if (sel) { sel.value = nomePosto; sel.dispatchEvent(new Event('change')); }
+      var form = document.getElementById('ftForm');
+      if (form && typeof form.scrollIntoView === 'function') form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }
+
+  function fecharAlertaFlutuante() {
+    var el = document.getElementById('falertPendencias');
+    if (el) el.remove();
+    var container = document.getElementById('floatingAlerts');
+    if (container) container.classList.remove('has-alert');
+    alertaFlutuanteAberto = false;
+  }
+
+  function renderGrupoPeriodo(itens, tituloPeriodo, icone) {
+    if (!itens.length) return '';
+    var html = '<div class="pendente-periodo-titulo">' + icone + ' Período ' + tituloPeriodo + ' ' + icone + '</div>';
+    html += itens.map(function (it) {
+      var fimTxt = it.fim + (it.cruzaMeiaNoite ? ' (+1 dia)' : '');
+      return '<div class="pendente-card" data-chave="' + it.chave + '" data-posto="' + escHtml(it.nome) + '">' +
+        '<span class="pendente-icon">' + icone + '</span>' +
+        '<div class="pendente-info">' +
+          '<div class="pendente-posto">&#x1F4CD; ' + escHtml(it.nome) + '</div>' +
+          '<div class="pendente-detalhe">Sem FT &middot; ' + it.inicio + ' &rarr; ' + fimTxt + ' &middot; ref. ' + fmtBR(it.refData) + '</div>' +
+        '</div>' +
+        '<span class="pendente-dot"></span>' +
+      '</div>';
+    }).join('');
+    return html;
+  }
+
+  function exibirAlertaFlutuante(pendencias, silencioso) {
+    fecharAlertaFlutuante();
+    var container = document.getElementById('floatingAlerts');
+    if (!container) return;
+
+    var total = pendencias.dia.length + pendencias.noite.length;
+    var tituloTurno = pendencias.noite.length && !pendencias.dia.length ? 'Turno Noturno'
+      : (pendencias.dia.length && !pendencias.noite.length ? 'Turno Diurno' : 'Turnos Dia e Noite');
+
+    var card = document.createElement('div');
+    card.className = 'floating-alert-card pendencias';
+    card.id = 'falertPendencias';
+    card.innerHTML =
+      '<div class="floating-alert-icon">&#x26A0;&#xFE0F;</div>' +
+      '<div class="floating-alert-head">&#x23F0; FTs Pendentes — ' + tituloTurno + '</div>' +
+      '<div class="floating-alert-body">Os postos abaixo <strong>não possuem FT lançada</strong> para o período.</div>' +
+      renderGrupoPeriodo(pendencias.dia, 'Dia', '&#x2600;&#xFE0F;') +
+      renderGrupoPeriodo(pendencias.noite, 'Noite', '&#x1F319;') +
+      '<div class="floating-alert-actions">' +
+        '<button class="fa-btn-adiar" data-acao="adiar">&#x23F8; Lembrar em 1h</button>' +
+        '<button class="fa-btn-ciente" data-acao="ciente">&#x2714; Ciente — Vou lançar agora</button>' +
+      '</div>' +
+      '<a class="fa-link-config" id="faLinkConfig">&#x2699;&#xFE0F; Configurar Postos Monitorados</a>';
+    container.classList.add('has-alert');
+
+    card.addEventListener('click', function (e) {
+      var linkConfig = e.target.closest('#faLinkConfig');
+      if (linkConfig) {
+        fecharAlertaFlutuante();
+        var btn = document.querySelector('.tab-btn[data-tab="tab-alertas"]');
+        if (btn) btn.click();
+        return;
+      }
+      var pendCard = e.target.closest('.pendente-card');
+      if (pendCard && !e.target.closest('button')) { irParaLancamento(pendCard.dataset.posto); return; }
+
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      var acao = btn.dataset.acao;
+      var todasChaves = pendencias.dia.concat(pendencias.noite).map(function (it) { return it.chave; });
+      if (acao === 'ciente') {
+        var ateCiente = new Date(Date.now() + 20 * 60 * 1000).toISOString();
+        todasChaves.forEach(function (chave) { ciente[chave] = { ate: ateCiente }; });
+        saveCiente();
+        fecharAlertaFlutuante();
+        showToast('✅ Ok! Vamos lembrar de novo em 20min caso ainda não tenha lançado.', 'success');
+      } else if (acao === 'adiar') {
+        var ate = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+        todasChaves.forEach(function (chave) { ciente[chave] = { ate: ate }; });
+        saveCiente();
+        fecharAlertaFlutuante();
+        showToast('⏱️ Alerta adiado por 1 hora — volta sozinho se ainda estiver pendente.', 'success');
+      }
+    });
+
+    container.appendChild(card);
+    alertaFlutuanteAberto = true;
+    if (!silencioso) {
+      beep();
+      notificarSistema(total);
+    }
+  }
+
+  function checkAlertas() {
+    if (alertaFlutuanteAberto) return;
+    var pendencias = calcularPendencias(false);
+    if (pendencias.dia.length || pendencias.noite.length) exibirAlertaFlutuante(pendencias);
+  }
+
+  function recheckImediato() {
+    if (!alertaFlutuanteAberto) return;
+    var pendencias = calcularPendencias(false);
+    if (!pendencias.dia.length && !pendencias.noite.length) {
+      fecharAlertaFlutuante();
+      showToast('✅ Pendência resolvida — alerta encerrado.', 'success');
+    } else {
+      exibirAlertaFlutuante(pendencias, true);
+    }
+  }
+  window.FT_recheckAlertasImediato = recheckImediato;
+
+  if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+    try { Notification.requestPermission(); } catch (e) {}
+  }
+
+  setTimeout(checkAlertas, 4000);
+  setInterval(checkAlertas, 60000);
+
+  return { refresh: refresh, calcularPendencias: calcularPendencias, recheckImediato: recheckImediato, aplicarRemoto: aplicarRemoto };
+}());
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO — LEMBRETES MANUAIS DE SERVIÇO (aba Alertas)
+   Cadastro livre de "nome do serviço + data/hora prevista".
+   Quando o horário chega, dispara um modal bloqueante (precisa de
+   ação do usuário para fechar), com beep + notificação do sistema.
+   ════════════════════════════════════════════════════════════ */
+var LembretesModule = (function () {
+  'use strict';
+
+  var LS_LEMBRETES = 'ft_alertas_lembretes';
+
+  function loadJSON(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (e) { return fallback; }
+  }
+  function persist(key, data) { try { localStorage.setItem(key, JSON.stringify(data)); } catch (e) {} }
+
+  var lembretes = loadJSON(LS_LEMBRETES, []);
+  function saveLembretes() { persist(LS_LEMBRETES, lembretes); }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function fmtDataHoraBR(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' às ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function encontrarLembrete(id) { return lembretes.find(function (l) { return l.id === id; }); }
+
+  function statusLembrete(l) {
+    if (l.concluido) return 'concluido';
+    var agora = Date.now();
+    if (new Date(l.dataHora).getTime() <= agora) return 'atrasado';
+    return 'agendado';
+  }
+
+  function renderLembretes() {
+    var el = document.getElementById('listaLembretes');
+    if (!el) return;
+    if (!lembretes.length) { el.innerHTML = '<p class="empty-state">Nenhum lembrete cadastrado.</p>'; return; }
+
+    var ordenados = lembretes.slice().sort(function (a, b) {
+      if (!!a.concluido !== !!b.concluido) return a.concluido ? 1 : -1;
+      return new Date(a.dataHora) - new Date(b.dataHora);
+    });
+
+    var labelStatus = { agendado: 'Agendado', atrasado: 'Atrasado', concluido: 'Concluído' };
+
+    el.innerHTML = ordenados.map(function (l) {
+      var st = statusLembrete(l);
+      return '<div class="lembrete-card ' + st + '" data-id="' + l.id + '">' +
+        '<div class="lembrete-info">' +
+          '<div class="lembrete-servico">&#x1F4CB; ' + escHtml(l.servico) + '</div>' +
+          '<div class="lembrete-quando">&#x1F4C5; ' + fmtDataHoraBR(l.dataHora) + '</div>' +
+          (l.nota ? '<div class="lembrete-nota">&#x1F4DD; ' + escHtml(l.nota) + '</div>' : '') +
+        '</div>' +
+        '<span class="lembrete-badge ' + st + '">' + labelStatus[st] + '</span>' +
+        '<div class="lembrete-actions">' +
+          (l.concluido ? '' : '<button type="button" class="btn-concluir-lembrete" data-acao="concluir" title="Marcar como concluído">&#x2714;</button>') +
+          '<button type="button" class="btn-remove" data-acao="remover" title="Remover">&#x2715;</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  document.getElementById('listaLembretes').addEventListener('click', function (e) {
+    var card = e.target.closest('.lembrete-card');
+    if (!card) return;
+    var l = encontrarLembrete(card.dataset.id);
+    if (!l) return;
+    var btn = e.target.closest('[data-acao]');
+    if (!btn) return;
+    if (btn.dataset.acao === 'concluir') {
+      l.concluido = true;
+      saveLembretes();
+      renderLembretes();
+      showToast('✅ Lembrete concluído.', 'success');
+    } else if (btn.dataset.acao === 'remover') {
+      if (!confirm('Remover o lembrete "' + l.servico + '"?')) return;
+      lembretes = lembretes.filter(function (x) { return x.id !== l.id; });
+      saveLembretes();
+      renderLembretes();
+    }
+  });
+
+  document.getElementById('btnAddLembrete').addEventListener('click', function () {
+    var inputServico = document.getElementById('inputLembreteServico');
+    var inputData = document.getElementById('inputLembreteDataHora');
+    var inputNota = document.getElementById('inputLembreteNota');
+    var servico = inputServico.value.trim();
+    var dataHora = inputData.value;
+    if (!servico) { showToast('⚠️ Informe o nome do serviço.', 'error'); return; }
+    if (!dataHora) { showToast('⚠️ Informe a data/hora prevista.', 'error'); return; }
+
+    lembretes.push({
+      id: gerarId(),
+      servico: servico,
+      dataHora: dataHora,
+      nota: inputNota.value.trim(),
+      concluido: false,
+      adiadoAte: null,
+      criadoEm: new Date().toISOString()
+    });
+    saveLembretes();
+    inputServico.value = '';
+    inputData.value = '';
+    inputNota.value = '';
+    renderLembretes();
+    showToast('✅ Lembrete cadastrado.', 'success');
+  });
+
+  var filaLembretesPendentes = [];
+  var modalLembreteAberto = false;
+
+  function beep() {
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      var ctx = new Ctx();
+      var osc = ctx.createOscillator(); var gain = ctx.createGain();
+      osc.type = 'sine'; osc.frequency.value = 660;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 0.5);
+    } catch (e) { /* áudio é apenas reforço opcional */ }
+  }
+  function notificarSistema(l) {
+    try {
+      if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+      new Notification('🔔 Lembrete: ' + l.servico, { body: 'Estava programado para ' + fmtDataHoraBR(l.dataHora) + '.', tag: 'ft-lembrete-' + l.id });
+    } catch (e) {}
+  }
+
+  function abrirModalLembrete(l) {
+    document.getElementById('lembreteAlertaServico').textContent = l.servico;
+    document.getElementById('lembreteAlertaDataHora').textContent = 'Programado para ' + fmtDataHoraBR(l.dataHora);
+    var notaWrap = document.getElementById('lembreteAlertaNotaWrap');
+    if (l.nota) { notaWrap.style.display = ''; document.getElementById('lembreteAlertaNota').textContent = l.nota; }
+    else { notaWrap.style.display = 'none'; }
+    document.getElementById('modalLembreteAlerta').classList.add('show');
+    modalLembreteAberto = true;
+    beep();
+    notificarSistema(l);
+  }
+
+  function fecharModalLembreteEAbrirProximo() {
+    document.getElementById('modalLembreteAlerta').classList.remove('show');
+    modalLembreteAberto = false;
+    setTimeout(processarFilaLembretes, 400);
+  }
+
+  function processarFilaLembretes() {
+    if (modalLembreteAberto) return;
+    var proximoId = filaLembretesPendentes.shift();
+    if (!proximoId) return;
+    var l = encontrarLembrete(proximoId);
+    if (!l || l.concluido) { processarFilaLembretes(); return; }
+    abrirModalLembrete(l);
+  }
+
+  document.getElementById('btnLembreteConcluido').addEventListener('click', function () {
+    var servicoAtual = document.getElementById('lembreteAlertaServico').textContent;
+    var l = lembretes.find(function (x) { return x.servico === servicoAtual && !x.concluido; });
+    if (l) { l.concluido = true; saveLembretes(); renderLembretes(); }
+    fecharModalLembreteEAbrirProximo();
+  });
+  document.getElementById('btnLembreteAdiar').addEventListener('click', function () {
+    var servicoAtual = document.getElementById('lembreteAlertaServico').textContent;
+    var l = lembretes.find(function (x) { return x.servico === servicoAtual && !x.concluido; });
+    if (l) { l.adiadoAte = new Date(Date.now() + 15 * 60 * 1000).toISOString(); saveLembretes(); }
+    fecharModalLembreteEAbrirProximo();
+    showToast('⏱️ Vou lembrar de novo em 15 minutos.', 'success');
+  });
+
+  function checkLembretes() {
+    var agora = Date.now();
+    lembretes.forEach(function (l) {
+      if (l.concluido) return;
+      if (new Date(l.dataHora).getTime() > agora) return;
+      if (l.adiadoAte && new Date(l.adiadoAte).getTime() > agora) return;
+      if (filaLembretesPendentes.indexOf(l.id) === -1) filaLembretesPendentes.push(l.id);
+    });
+    var tab = document.getElementById('tab-alertas');
+    if (tab && !tab.classList.contains('hidden')) renderLembretes();
+    processarFilaLembretes();
+  }
+
+  function refresh() { renderLembretes(); }
+  window.renderLembretesTab = refresh;
+
+  renderLembretes();
+  setTimeout(checkLembretes, 6000);
+  setInterval(checkLembretes, 20000);
+
+  return { refresh: refresh };
+}());
+
+/* ════════════════════════════════════════════════════════════
+   Dropdown customizado (skin sobre os <select> nativos)
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  function enhance(sel) {
+    if (sel.dataset.csEnhanced) return;
+    sel.dataset.csEnhanced = '1';
+
+    var wrap = document.createElement('div');
+    wrap.className = 'cs-wrap';
+    sel.parentNode.insertBefore(wrap, sel);
+    wrap.appendChild(sel);
+    sel.classList.add('cs-native');
+    sel.tabIndex = -1;
+
+    var trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'cs-trigger';
+    trigger.innerHTML = '<span class="cs-label"></span>' +
+      '<span class="cs-clear" title="Limpar seleção">&#10005;</span>' +
+      '<svg class="cs-chevron" viewBox="0 0 12 8" fill="none"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
+    wrap.appendChild(trigger);
+    var clearBtn = trigger.querySelector('.cs-clear');
+    clearBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (sel.disabled || !sel.value) return;
+      sel.value = '';
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      closePanel();
+    });
+
+    var panel = document.createElement('div');
+    panel.className = 'cs-panel';
+    wrap.appendChild(panel);
+
+    var listEl, searchInput;
+
+    function buildPanel() {
+      panel.innerHTML = '';
+      var opts = Array.prototype.slice.call(sel.options);
+      searchInput = null;
+      if (opts.length > 8) {
+        var searchWrap = document.createElement('div');
+        searchWrap.className = 'cs-search-wrap';
+        searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.className = 'cs-search';
+        searchInput.placeholder = '\uD83D\uDD0D Buscar…';
+        searchWrap.appendChild(searchInput);
+        panel.appendChild(searchWrap);
+        searchInput.addEventListener('click', function (e) { e.stopPropagation(); });
+        searchInput.addEventListener('input', function () {
+          var q = searchInput.value.toLowerCase().trim();
+          renderOptions(!q ? opts : opts.filter(function (o) { return o.textContent.toLowerCase().indexOf(q) !== -1; }));
+        });
+      }
+      listEl = document.createElement('div');
+      listEl.className = 'cs-list';
+      panel.appendChild(listEl);
+      renderOptions(opts);
+    }
+
+    function renderOptions(opts) {
+      listEl.innerHTML = '';
+      if (!opts.length) {
+        var empty = document.createElement('div');
+        empty.className = 'cs-empty';
+        empty.textContent = 'Nenhum resultado encontrado';
+        listEl.appendChild(empty);
+        return;
+      }
+      opts.forEach(function (o) {
+        var item = document.createElement('div');
+        item.className = 'cs-option' + (o.disabled ? ' disabled' : '') + (o.value === sel.value ? ' selected' : '');
+        var span = document.createElement('span');
+        span.className = 'cs-option-text';
+        span.textContent = o.textContent;
+        var chk = document.createElement('span');
+        chk.className = 'cs-check';
+        chk.innerHTML = '&#10003;';
+        item.appendChild(span);
+        item.appendChild(chk);
+        item.addEventListener('click', function () {
+          if (o.disabled) return;
+          sel.value = o.value;
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+          closePanel();
+        });
+        listEl.appendChild(item);
+      });
+    }
+
+    function updateLabel() {
+      var current = sel.options[sel.selectedIndex];
+      var label = trigger.querySelector('.cs-label');
+      label.textContent = current ? current.textContent : '';
+      label.classList.toggle('placeholder', !sel.value);
+      clearBtn.classList.toggle('visible', !!sel.value && !sel.disabled);
+    }
+
+    function openPanel() {
+      if (wrap.classList.contains('cs-open')) return;
+      document.querySelectorAll('.cs-wrap.cs-open').forEach(function (w) { if (w !== wrap) closeWrap(w); });
+      buildPanel();
+      wrap.classList.add('cs-open');
+      trigger.classList.add('open');
+      panel.classList.add('open');
+      var selOpt = panel.querySelector('.cs-option.selected');
+      if (selOpt) setTimeout(function () { selOpt.scrollIntoView({ block: 'nearest' }); }, 0);
+      if (searchInput) setTimeout(function () { searchInput.focus(); }, 60);
+    }
+    function closePanel() { closeWrap(wrap); }
+    function closeWrap(w) {
+      w.classList.remove('cs-open');
+      var t = w.querySelector('.cs-trigger'), p = w.querySelector('.cs-panel');
+      if (t) t.classList.remove('open');
+      if (p) p.classList.remove('open');
+    }
+
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (sel.disabled) return;
+      if (wrap.classList.contains('cs-open')) closePanel(); else openPanel();
+    });
+    trigger.disabled = sel.disabled;
+
+    sel.addEventListener('change', updateLabel);
+
+    var mo = new MutationObserver(function () {
+      trigger.disabled = sel.disabled;
+      updateLabel();
+      if (wrap.classList.contains('cs-open')) buildPanel();
+    });
+    mo.observe(sel, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled'] });
+
+    updateLabel();
+  }
+
+  function enhanceAll() {
+    document.querySelectorAll('select').forEach(enhance);
+  }
+
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('.cs-wrap')) return;
+    document.querySelectorAll('.cs-wrap.cs-open').forEach(function (w) {
+      w.classList.remove('cs-open');
+      var t = w.querySelector('.cs-trigger'), p = w.querySelector('.cs-panel');
+      if (t) t.classList.remove('open');
+      if (p) p.classList.remove('open');
+    });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.cs-wrap.cs-open').forEach(function (w) {
+        w.classList.remove('cs-open');
+        var t = w.querySelector('.cs-trigger'), p = w.querySelector('.cs-panel');
+        if (t) t.classList.remove('open');
+        if (p) p.classList.remove('open');
+      });
+    }
+  });
+
+  enhanceAll();
+  new MutationObserver(enhanceAll).observe(document.body, { childList: true, subtree: true });
+}());
+</script>
+
+</body>
+</html>
+ateLabel();
+  }
+
+  function enhanceAll() {
+    document.querySelectorAll('select').forEach(enhance);
+  }
+
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('.cs-wrap')) return;
+    document.querySelectorAll('.cs-wrap.cs-open').forEach(function (w) {
+      w.classList.remove('cs-open');
+      var t = w.querySelector('.cs-trigger'), p = w.querySelector('.cs-panel');
+      if (t) t.classList.remove('open');
+      if (p) p.classList.remove('open');
+    });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.cs-wrap.cs-open').forEach(function (w) {
+        w.classList.remove('cs-open');
+        var t = w.querySelector('.cs-trigger'), p = w.querySelector('.cs-panel');
+        if (t) t.classList.remove('open');
+        if (p) p.classList.remove('open');
+      });
+    }
