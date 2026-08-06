@@ -2373,11 +2373,14 @@ refreshTodosOsSelects();
 
   function formatarValor(v) { return 'R$ ' + (v || 0).toFixed(2).replace('.', ','); }
 
+  var TODOS_ID = '__todos__';
+
   function popularColaboradores() {
     var atual = selColab.value;
     selColab.innerHTML = '<option value="">-- Selecione --</option>' +
+      '<option value="' + TODOS_ID + '">&#x1F465; Todos</option>' +
       sortAlpha(colaboradores).map(function (c) { return '<option value="' + c.id + '">' + escHtml(c.nome) + '</option>'; }).join('');
-    if (colaboradores.some(function (c) { return c.id === atual; })) selColab.value = atual;
+    if (atual === TODOS_ID || colaboradores.some(function (c) { return c.id === atual; })) selColab.value = atual;
   }
 
   function periodoRange(periodo) {
@@ -2398,10 +2401,12 @@ refreshTodosOsSelects();
     return { start: start, end: end };
   }
 
-  /* Todos os lançamentos (FT + Bico) associados a um colaborador específico */
+  /* Todos os lançamentos (FT + Bico) associados a um colaborador específico,
+     ou de todos os colaboradores quando colaboradorId === TODOS_ID. */
   function coletarParaColaborador(colaboradorId) {
-    var fts = loadStorage('ft_lancamentos').filter(function (f) { return f.substitutoId === colaboradorId; });
-    var bicosData = loadStorage('ft_bicos').filter(function (b) { return b.colaboradorId === colaboradorId; });
+    var todos = colaboradorId === TODOS_ID;
+    var fts = loadStorage('ft_lancamentos').filter(function (f) { return todos || f.substitutoId === colaboradorId; });
+    var bicosData = loadStorage('ft_bicos').filter(function (b) { return todos || b.colaboradorId === colaboradorId; });
     var registros = [];
 
     fts.forEach(function (f) {
@@ -2410,7 +2415,8 @@ refreshTodosOsSelects();
         id: f.id, tipoKey: 'ft', tipoLabel: '📌 FT Pontual', dataObj: dataObj, comHora: true,
         posto: f.postoNome || '', detalheLabel: 'Motivo', detalhe: f.motivo || '',
         horario: f.horario || '', valor: f.valor || 0, observacao: f.observacao || '', pago: !!f.pago,
-        ausenteNome: f.colaboradorAusenteNome || '', criadoEm: f.criadoEm || ''
+        ausenteNome: f.colaboradorAusenteNome || '', criadoEm: f.criadoEm || '',
+        colaboradorNome: f.substitutoNome || ''
       });
     });
 
@@ -2421,7 +2427,8 @@ refreshTodosOsSelects();
         posto: b.postoNome || '', detalheLabel: 'Dias / Status',
         detalhe: ((b.dias || []).join(', ') || '—') + (b.ativo === false ? ' · Inativo' : ' · Ativo'),
         horario: b.horario || '', valor: b.valor || 0, observacao: b.observacao || '', pago: !!b.pago,
-        ausenteNome: '', criadoEm: b.criadoEm || ''
+        ausenteNome: '', criadoEm: b.criadoEm || '',
+        colaboradorNome: b.colaboradorNome || ''
       });
     });
 
@@ -2463,9 +2470,9 @@ refreshTodosOsSelects();
       '</div>';
   }
 
-  function renderListaPagamentos(registros) {
+  function renderListaPagamentos(registros, mostrarColaborador) {
     if (!registros.length) {
-      listaEl.innerHTML = '<p class="empty-state">Nenhum lançamento encontrado para este colaborador no período selecionado.</p>';
+      listaEl.innerHTML = '<p class="empty-state">Nenhum lançamento encontrado' + (mostrarColaborador ? '' : ' para este colaborador') + ' no período selecionado.</p>';
       return;
     }
     listaEl.innerHTML = registros.map(function (r) {
@@ -2478,6 +2485,7 @@ refreshTodosOsSelects();
             (r.pago ? '&#x2705; Pago' : '&#x23F3; Pendente') +
           '</button>' +
         '</div>' +
+        (mostrarColaborador ? '<div class="hist-card-title">&#x1F464; ' + escHtml(r.colaboradorNome || '—') + '</div>' : '') +
         '<div class="hist-card-grid">' +
           '<div class="field-mini"><span class="lbl">Posto</span><span class="val">' + escHtml(r.posto || '—') + '</span></div>' +
           '<div class="field-mini"><span class="lbl">' + escHtml(r.detalheLabel) + '</span><span class="val">' + escHtml(r.detalhe || '—') + '</span></div>' +
@@ -2501,7 +2509,8 @@ refreshTodosOsSelects();
       return;
     }
 
-    var nomeColab = (colaboradores.find(function (c) { return c.id === colabId; }) || {}).nome || '';
+    var todos = colabId === TODOS_ID;
+    var nomeColab = todos ? 'Todos os colaboradores' : ((colaboradores.find(function (c) { return c.id === colabId; }) || {}).nome || '');
     var registros = coletarParaColaborador(colabId);
 
     var range = periodoRange(selPeriodo.value);
@@ -2523,7 +2532,7 @@ refreshTodosOsSelects();
     conteudoEl.style.display = 'block';
 
     renderDashboard(registros, nomeColab);
-    renderListaPagamentos(registros);
+    renderListaPagamentos(registros, todos);
   }
 
   window.renderPagamentosTab = render;
@@ -2608,6 +2617,7 @@ refreshTodosOsSelects();
   function gerarRecibo() {
     var colabId = selColab.value;
     if (!colabId) { showToast('⚠️ Selecione um colaborador primeiro.', 'error'); return; }
+    if (colabId === TODOS_ID) { showToast('⚠️ Selecione um colaborador específico para gerar o recibo.', 'error'); return; }
     if (!registrosAtuais.length) { showToast('⚠️ Nenhum lançamento para gerar recibo.', 'error'); return; }
     if (typeof window.jspdf === 'undefined') { showToast('⚠️ Biblioteca de PDF não carregou. Verifique sua conexão.', 'error'); return; }
 
