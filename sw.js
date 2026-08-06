@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ft-pj-cache-v1';
+const CACHE_NAME = 'ft-pj-cache-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -11,7 +11,18 @@ self.addEventListener('install', function (event) {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(function (cache) {
-      return cache.addAll(APP_SHELL);
+      /* cache.addAll() e atomico: se UM arquivo do APP_SHELL nao existir
+         (404) ou falhar, a promise inteira rejeita e o Service Worker
+         nunca termina de instalar - foi isso que quebrou o "baixar/
+         instalar" antes. Agora cacheamos item a item e ignoramos falha
+         individual, sem derrubar a instalacao inteira. */
+      return Promise.all(
+        APP_SHELL.map(function (url) {
+          return cache.add(url).catch(function (err) {
+            console.warn('[SW] Falhou ao cachear no app shell:', url, err);
+          });
+        })
+      );
     })
   );
 });
@@ -33,12 +44,10 @@ self.addEventListener('activate', function (event) {
 self.addEventListener('fetch', function (event) {
   const req = event.request;
 
-  // Só cuida de requisições GET do mesmo domínio (não intercepta CDNs/Firebase)
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) {
     return;
   }
 
-  // Network-first para o HTML, assim atualizações aparecem sem esperar cache expirar
   if (req.mode === 'navigate' || req.destination === 'document') {
     event.respondWith(
       fetch(req)
@@ -52,7 +61,6 @@ self.addEventListener('fetch', function (event) {
     return;
   }
 
-  // Cache-first para o resto (ícones, manifest)
   event.respondWith(
     caches.match(req).then(function (cached) {
       return cached || fetch(req).then(function (res) {
