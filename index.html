@@ -6,6 +6,9 @@
 <title>Nova Folga Trabalhada (FT)</title>
 
 <!-- ── PWA ── -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192-4.png">
+<link rel="apple-touch-icon" href="icon-192-4.png">
 <meta name="theme-color" content="#f7b731">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -666,6 +669,10 @@
 
   <div class="rail-divider"></div>
 
+  <button type="button" id="btnInstalarApp" class="rail-item" style="display:none;">
+    <span class="rail-icon">&#x2B07;&#xFE0F;</span><span class="rail-label">Instalar App</span>
+  </button>
+
   <div class="rail-footer-logo">
     <div class="rail-footer-hex">
       <svg viewBox="0 0 100 110" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1201,6 +1208,65 @@
 <div class="toast" id="toast"></div>
 
 <script>
+/* ════════════════════════════════════════════════════════════
+   PWA — Service Worker + botão "Instalar App"
+   O Chrome/Android só libera a opção de instalação (e o menu
+   nativo "Instalar app") quando existem manifest.json + um
+   Service Worker registrado. Sem isso, a opção simplesmente não
+   aparece em nenhum dispositivo, mesmo com os metadados de PWA
+   no <head>. Aqui registramos o SW e controlamos o botão próprio
+   "Instalar App" do menu lateral via evento beforeinstallprompt.
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function (err) {
+        console.warn('Falha ao registrar o Service Worker:', err);
+      });
+    });
+  }
+
+  var btnInstalar = document.getElementById('btnInstalarApp');
+  var deferredPrompt = null;
+
+  function estaInstalado() {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
+
+  if (btnInstalar && !estaInstalado()) {
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      btnInstalar.style.display = 'flex';
+    });
+
+    btnInstalar.addEventListener('click', function () {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.finally(function () {
+          deferredPrompt = null;
+          btnInstalar.style.display = 'none';
+        });
+        return;
+      }
+      /* iOS Safari e outros navegadores sem beforeinstallprompt:
+         instalação é manual pelo menu de compartilhamento. */
+      if (typeof showToast === 'function') {
+        showToast('📲 No iPhone/iPad: toque em Compartilhar e depois em "Adicionar à Tela de Início".', 'success');
+      } else {
+        alert('No iPhone/iPad: toque em Compartilhar e depois em "Adicionar à Tela de Início".');
+      }
+    });
+
+    window.addEventListener('appinstalled', function () {
+      deferredPrompt = null;
+      btnInstalar.style.display = 'none';
+    });
+  }
+}());
+
 /* ════════════════════════════════════════════════════════════
    Helpers gerais
    ════════════════════════════════════════════════════════════ */
