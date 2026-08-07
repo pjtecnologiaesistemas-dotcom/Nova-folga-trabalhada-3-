@@ -1388,9 +1388,21 @@ var FTCloud = (function () {
 
   /* Aplica uma mudança vinda de outro aparelho às variáveis em memória e recarrega as telas afetadas. */
   function aplicarAtualizacaoRemota(chave, valor) {
-    if (chave === 'ft_postos') { postos = valor || []; refreshTodosOsSelects(); }
-    if (chave === 'ft_colaboradores') { colaboradores = valor || []; refreshTodosOsSelects(); }
-    if (chave === 'ft_motivos') { motivos = valor || []; refreshMotivoSelect(); }
+    if (chave === 'ft_postos') {
+      postos = valor || [];
+      refreshTodosOsSelects();
+      if (typeof window.renderCadastroPostos === 'function') window.renderCadastroPostos();
+    }
+    if (chave === 'ft_colaboradores') {
+      colaboradores = valor || [];
+      refreshTodosOsSelects();
+      if (typeof window.renderCadastroColaboradores === 'function') window.renderCadastroColaboradores();
+    }
+    if (chave === 'ft_motivos') {
+      motivos = valor || [];
+      refreshMotivoSelect();
+      if (typeof window.renderCadastroMotivos === 'function') window.renderCadastroMotivos();
+    }
     if (chave === 'ft_alertas_postos_v2' && window.AlertasModule && typeof window.AlertasModule.aplicarRemoto === 'function') {
       window.AlertasModule.aplicarRemoto(valor);
     }
@@ -1963,9 +1975,10 @@ refreshTodosOsSelects();
     });
 
     render();
+    return render;
   }
 
-  criarCadastroSimples({
+  var renderCadastroColaboradores = criarCadastroSimples({
     getItems: function () { return colaboradores; },
     setItems: function (v) { colaboradores = dedupe(v); saveStorage(LS_COLAB, colaboradores); },
     onChange: refreshTodosOsSelects,
@@ -1974,7 +1987,7 @@ refreshTodosOsSelects();
     icon: '&#x1F464;', label: 'Colaborador', emptyMsg: 'Nenhum colaborador cadastrado.'
   });
 
-  criarCadastroSimples({
+  var renderCadastroPostos = criarCadastroSimples({
     getItems: function () { return postos; },
     setItems: function (v) { postos = dedupe(v); saveStorage(LS_POSTOS, postos); },
     onChange: refreshTodosOsSelects,
@@ -2068,6 +2081,7 @@ refreshTodosOsSelects();
     atualizarVisibilidadeMotivos();
   });
   buscaMotivo.addEventListener('input', function () { renderMotivos(); atualizarVisibilidadeMotivos(); });
+
   listaMotivos.addEventListener('click', function (e) {
     var editBtn = e.target.closest('.btn-edit-item');
     var removeBtn = e.target.closest('.btn-remove');
@@ -2076,6 +2090,15 @@ refreshTodosOsSelects();
   });
 
   renderMotivos();
+
+  /* Expostas para que a sincronização em nuvem (FTCloud) consiga
+     atualizar essas listas quando os dados chegarem de outro
+     aparelho/da nuvem - sem isso, os nomes só apareciam nos
+     dropdowns (via refreshTodosOsSelects), mas ficavam "faltando"
+     nesta aba até a página ser recarregada manualmente. */
+  window.renderCadastroColaboradores = renderCadastroColaboradores;
+  window.renderCadastroPostos = renderCadastroPostos;
+  window.renderCadastroMotivos = renderMotivos;
 }());
 
 /* ════════════════════════════════════════════════════════════
