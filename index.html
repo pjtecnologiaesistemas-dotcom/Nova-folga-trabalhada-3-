@@ -859,6 +859,15 @@
 
   <!-- ABA: CADASTROS -->
   <div class="tab-panel hidden" id="tab-cadastros">
+    <div class="cadastro-section" style="border-color:#f7b731;">
+      <button type="button" id="btnReconstruirCadastros" class="btn-add" style="width:100%;padding:14px;font-weight:800;">
+        &#x1F504; Reconstruir a partir do Histórico
+      </button>
+      <p style="font-size:.78rem;color:var(--muted);margin-top:8px;line-height:1.4;">
+        Recupera nomes de Colaboradores, Postos e Motivos a partir dos lançamentos já existentes no Histórico
+        (útil se essas listas ficaram vazias ou com nomes genéricos após sincronização).
+      </p>
+    </div>
     <div class="cadastro-section">
       <h2 class="col-green">&#x1F464; Colaboradores <span class="cadastro-badge" id="badge-colaboradores">0</span></h2>
       <div class="add-row">
@@ -1364,7 +1373,17 @@ var FTCloud = (function () {
     db.collection(COLECAO).doc(chave).onSnapshot(function (doc) {
       marcarConfirmado(chave);
       if (!doc.exists) {
-        /* Ainda não existe na nuvem: publica o que já existe localmente (ex.: seed inicial). */
+        /* IMPORTANTE: um snapshot "não existe" vindo do CACHE local
+           (doc.metadata.fromCache) não é confiável — acontece sempre
+           que o cache do navegador foi limpo, é um aparelho novo, ou
+           o app acabou de ser (re)instalado. Nesses casos o documento
+           pode muito bem existir no servidor, só ainda não chegou.
+           Só tratamos como "realmente não existe" quando a resposta
+           já foi confirmada pelo servidor - caso contrário, um
+           aparelho vazio poderia sobrescrever dados reais de todo
+           mundo com a semente local (foi exatamente isso que
+           corrompeu Colaboradores/Postos/Motivos antes). */
+        if (doc.metadata.fromCache) return;
         var local = loadStorage(chave);
         push(chave, local);
         return;
@@ -1388,9 +1407,21 @@ var FTCloud = (function () {
 
   /* Aplica uma mudança vinda de outro aparelho às variáveis em memória e recarrega as telas afetadas. */
   function aplicarAtualizacaoRemota(chave, valor) {
-    if (chave === 'ft_postos') { postos = valor || []; refreshTodosOsSelects(); }
-    if (chave === 'ft_colaboradores') { colaboradores = valor || []; refreshTodosOsSelects(); }
-    if (chave === 'ft_motivos') { motivos = valor || []; refreshMotivoSelect(); }
+    if (chave === 'ft_postos') {
+      postos = valor || [];
+      refreshTodosOsSelects();
+      if (typeof window.renderCadastroPostos === 'function') window.renderCadastroPostos();
+    }
+    if (chave === 'ft_colaboradores') {
+      colaboradores = valor || [];
+      refreshTodosOsSelects();
+      if (typeof window.renderCadastroColaboradores === 'function') window.renderCadastroColaboradores();
+    }
+    if (chave === 'ft_motivos') {
+      motivos = valor || [];
+      refreshMotivoSelect();
+      if (typeof window.renderCadastroMotivos === 'function') window.renderCadastroMotivos();
+    }
     if (chave === 'ft_alertas_postos_v2' && window.AlertasModule && typeof window.AlertasModule.aplicarRemoto === 'function') {
       window.AlertasModule.aplicarRemoto(valor);
     }
@@ -1446,20 +1477,30 @@ var colaboradores = loadStorage(LS_COLAB);
 var motivos = loadStorage(LS_MOTIVOS);
 
 (function seedInicial() {
+  /* Importante: a semente aqui é só uma tela de boas-vindas local, para
+     quando alguém abre o app pela primeira vez, num aparelho realmente
+     novo, sem nenhum dado. Ela NUNCA deve ser enviada para a nuvem
+     automaticamente — se o app abrir num aparelho vazio (cache limpo,
+     reinstalação) enquanto os dados reais ainda existem no Firebase,
+     empurrar essa semente sobrescreveria os dados reais de todo mundo.
+     Por isso usamos localStorage.setItem diretamente (grava só neste
+     aparelho) em vez de saveStorage (que também envia para a nuvem).
+     Assim que a sincronização real confirmar os dados verdadeiros,
+     eles substituem essa semente local automaticamente. */
   if (!postos.length) {
     postos = ['Aeroclube', 'Água Parada', 'Almada', 'Alvorada', 'Barros', 'Colina'].map(function (nome) { return { id: gerarId(), nome: nome }; });
-    saveStorage(LS_POSTOS, postos);
+    try { localStorage.setItem(LS_POSTOS, JSON.stringify(postos)); } catch (e) {}
   }
   if (!colaboradores.length) {
     colaboradores = ['João Silva', 'Maria Souza', 'Carlos Pereira'].map(function (nome) { return { id: gerarId(), nome: nome }; });
-    saveStorage(LS_COLAB, colaboradores);
+    try { localStorage.setItem(LS_COLAB, JSON.stringify(colaboradores)); } catch (e) {}
   }
   if (!motivos.length) {
     motivos = [
       'Afastamento', 'Atestado', 'Bico Fixo', 'Cobertura de Férias', 'Extra',
       'Falta de Efetivo', 'Folga do Vigia', 'Remanejamento Interno', 'Suspensão', 'Treinamento'
     ].map(function (nome) { return { id: gerarId(), nome: nome }; });
-    saveStorage(LS_MOTIVOS, motivos);
+    try { localStorage.setItem(LS_MOTIVOS, JSON.stringify(motivos)); } catch (e) {}
   }
 }());
 
@@ -1963,9 +2004,10 @@ refreshTodosOsSelects();
     });
 
     render();
+    return render;
   }
 
-  criarCadastroSimples({
+  var renderCadastroColaboradores = criarCadastroSimples({
     getItems: function () { return colaboradores; },
     setItems: function (v) { colaboradores = dedupe(v); saveStorage(LS_COLAB, colaboradores); },
     onChange: refreshTodosOsSelects,
@@ -1974,7 +2016,7 @@ refreshTodosOsSelects();
     icon: '&#x1F464;', label: 'Colaborador', emptyMsg: 'Nenhum colaborador cadastrado.'
   });
 
-  criarCadastroSimples({
+  var renderCadastroPostos = criarCadastroSimples({
     getItems: function () { return postos; },
     setItems: function (v) { postos = dedupe(v); saveStorage(LS_POSTOS, postos); },
     onChange: refreshTodosOsSelects,
@@ -2068,6 +2110,7 @@ refreshTodosOsSelects();
     atualizarVisibilidadeMotivos();
   });
   buscaMotivo.addEventListener('input', function () { renderMotivos(); atualizarVisibilidadeMotivos(); });
+
   listaMotivos.addEventListener('click', function (e) {
     var editBtn = e.target.closest('.btn-edit-item');
     var removeBtn = e.target.closest('.btn-remove');
@@ -2076,6 +2119,87 @@ refreshTodosOsSelects();
   });
 
   renderMotivos();
+
+  /* Expostas para que a sincronização em nuvem (FTCloud) consiga
+     atualizar essas listas quando os dados chegarem de outro
+     aparelho/da nuvem - sem isso, os nomes só apareciam nos
+     dropdowns (via refreshTodosOsSelects), mas ficavam "faltando"
+     nesta aba até a página ser recarregada manualmente. */
+  window.renderCadastroColaboradores = renderCadastroColaboradores;
+  window.renderCadastroPostos = renderCadastroPostos;
+  window.renderCadastroMotivos = renderMotivos;
+
+  /* ── Reconstruir Colaboradores / Postos / Motivos a partir do Histórico ──
+     Se essas listas forem sobrescritas por sincronização (ex.: um aparelho
+     "vazio" empurrando a semente genérica), os nomes REAIS continuam
+     gravados como texto em cada lançamento de ft_lancamentos/ft_bicos.
+     Este botão varre esse histórico e reconstrói o cadastro a partir dali,
+     mesclando com o que já existe (sem duplicar) e enviando de volta
+     para a nuvem, restaurando os dados corretos em todos os aparelhos. */
+  var btnReconstruir = document.getElementById('btnReconstruirCadastros');
+  if (btnReconstruir) {
+    btnReconstruir.addEventListener('click', function () {
+      if (!confirm('Isso vai vasculhar todos os lançamentos do Histórico e recadastrar automaticamente os nomes de Colaboradores, Postos e Motivos encontrados (sem apagar os que já existem). Continuar?')) return;
+
+      var fts = loadStorage('ft_lancamentos');
+      var bicos = loadStorage('ft_bicos');
+
+      function mesclarNomes(listaAtual, nomesEncontrados) {
+        var vistos = {};
+        listaAtual.forEach(function (i) { vistos[i.nome.trim().toLowerCase()] = true; });
+        var adicionados = 0;
+        nomesEncontrados.forEach(function (nome) {
+          nome = (nome || '').trim();
+          if (!nome) return;
+          var chave = nome.toLowerCase();
+          if (vistos[chave]) return;
+          vistos[chave] = true;
+          listaAtual.push({ id: gerarId(), nome: nome });
+          adicionados++;
+        });
+        return adicionados;
+      }
+
+      var nomesColab = [];
+      var nomesPosto = [];
+      var nomesMotivo = [];
+
+      fts.forEach(function (f) {
+        if (f.substitutoNome) nomesColab.push(f.substitutoNome);
+        if (f.colaboradorAusenteNome) nomesColab.push(f.colaboradorAusenteNome);
+        if (f.postoNome) nomesPosto.push(f.postoNome);
+        if (f.motivo) nomesMotivo.push(f.motivo);
+      });
+      bicos.forEach(function (b) {
+        if (b.colaboradorNome) nomesColab.push(b.colaboradorNome);
+        if (b.postoNome) nomesPosto.push(b.postoNome);
+      });
+
+      var qtdColab = mesclarNomes(colaboradores, nomesColab);
+      var qtdPosto = mesclarNomes(postos, nomesPosto);
+      var qtdMotivo = mesclarNomes(motivos, nomesMotivo);
+
+      colaboradores = dedupe(colaboradores);
+      postos = dedupe(postos);
+      motivos = dedupe(motivos);
+
+      saveStorage(LS_COLAB, colaboradores);
+      saveStorage(LS_POSTOS, postos);
+      saveStorage(LS_MOTIVOS, motivos);
+
+      renderCadastroColaboradores();
+      renderCadastroPostos();
+      renderMotivos();
+      refreshTodosOsSelects();
+
+      var total = qtdColab + qtdPosto + qtdMotivo;
+      if (total === 0) {
+        showToast('ℹ️ Nenhum nome novo encontrado no Histórico para adicionar.', 'success');
+      } else {
+        showToast('✅ Recuperado: ' + qtdColab + ' colaborador(es), ' + qtdPosto + ' posto(s), ' + qtdMotivo + ' motivo(s).', 'success');
+      }
+    });
+  }
 }());
 
 /* ════════════════════════════════════════════════════════════
