@@ -3142,8 +3142,19 @@ refreshTodosOsSelects();
   }
 
   function salvar() {
-    if (!tipoAtual || !idAtual) return;
+    if (!tipoAtual || !idAtual) {
+      showToast('⚠️ Não foi possível identificar o lançamento a salvar. Feche e abra a edição novamente.', 'error');
+      return;
+    }
+    try {
+      salvarInterno();
+    } catch (err) {
+      console.error('Erro ao salvar edição de lançamento:', err);
+      showToast('⚠️ Erro ao salvar: ' + (err && err.message ? err.message : err), 'error');
+    }
+  }
 
+  function salvarInterno() {
     if (tipoAtual === 'ft') {
       var postoId = ftPosto.value;
       var motivoVal = ftMotivoEfetivo();
