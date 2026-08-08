@@ -3192,7 +3192,7 @@ refreshTodosOsSelects();
         valor: parseFloat(comumValor.value) || 0,
         dataHora: dataHoraVal,
         criadoEm: original.criadoEm || new Date().toISOString(),
-        pago: original.pago,
+        pago: !!original.pago,
         editadoEm: new Date().toISOString()
       };
       saveStorage('ft_lancamentos', arrFt);
@@ -3226,7 +3226,7 @@ refreshTodosOsSelects();
         observacao: comumObservacao.value.trim(),
         ativo: bicoAtivo.checked,
         criadoEm: originalB.criadoEm || new Date().toISOString(),
-        pago: originalB.pago,
+        pago: !!originalB.pago,
         editadoEm: new Date().toISOString()
       };
       saveStorage('ft_bicos', arrBico);
