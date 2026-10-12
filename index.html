@@ -630,6 +630,71 @@
   }
   .lembrete-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
   .lembrete-form textarea { min-height: 56px; resize: vertical; }
+
+  /* ═══ Balão 3D de confirmação (substitui confirm/prompt nativos) ═══ */
+  .pj3d-overlay {
+    position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    background: radial-gradient(circle at 50% 40%, rgba(0,0,0,.55), rgba(0,0,0,.82));
+    -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+    opacity: 0; visibility: hidden; transition: opacity .25s, visibility .25s;
+    perspective: 900px; overflow-y: auto;
+  }
+  .pj3d-overlay.show { opacity: 1; visibility: visible; }
+  .pj3d-balao {
+    --pj3d-cor: var(--danger);
+    position: relative; width: min(100%, 380px); margin: auto;
+    padding: clamp(46px, 11vw, 54px) clamp(16px, 5vw, 24px) clamp(16px, 5vw, 22px);
+    border-radius: 24px; text-align: center; color: var(--text); font-family: 'Exo 2', sans-serif;
+    background: linear-gradient(160deg, #3a2b17 0%, #2b2013 45%, #1f160b 100%);
+    border: 1.5px solid rgba(247,183,49,.55);
+    border-bottom: 6px solid #120c05;
+    box-shadow:
+      inset 0 2px 0 rgba(255,255,255,.14),
+      inset 0 -10px 18px rgba(0,0,0,.35),
+      0 6px 0 #0c0803,
+      0 26px 50px rgba(0,0,0,.7),
+      0 0 40px color-mix(in srgb, var(--pj3d-cor) 28%, transparent);
+    transform: translateY(40px) rotateX(24deg) scale(.82); transform-origin: 50% 100%;
+    transition: transform .45s cubic-bezier(.34,1.56,.64,1);
+  }
+  .pj3d-overlay.show .pj3d-balao { transform: translateY(0) rotateX(0) scale(1); animation: pj3dFloat 4s ease-in-out .5s infinite; }
+  @keyframes pj3dFloat { 0%,100% { transform: translateY(0) rotateX(0); } 50% { transform: translateY(-5px) rotateX(2deg); } }
+  /* rabinho do balão */
+  .pj3d-balao::after {
+    content: ''; position: absolute; left: 50%; bottom: -17px; width: 26px; height: 26px; margin-left: -13px;
+    background: #1f160b; border-right: 1.5px solid rgba(247,183,49,.55); border-bottom: 1.5px solid rgba(247,183,49,.55);
+    transform: rotate(45deg); border-bottom-right-radius: 6px; box-shadow: 4px 6px 0 -2px #0c0803;
+  }
+  /* esfera 3D do ícone */
+  .pj3d-icone {
+    position: absolute; top: -30px; left: 50%; margin-left: -34px; width: 68px; height: 68px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 1.9rem;
+    background: radial-gradient(circle at 32% 28%, #fff9 0, transparent 38%), radial-gradient(circle at 50% 55%, var(--pj3d-cor), color-mix(in srgb, var(--pj3d-cor) 55%, #000));
+    box-shadow: inset 0 -6px 10px rgba(0,0,0,.35), 0 8px 0 rgba(0,0,0,.35), 0 14px 22px rgba(0,0,0,.55);
+    border: 2px solid rgba(255,255,255,.25);
+  }
+  .pj3d-titulo { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: clamp(.82rem, 3.6vw, .98rem); letter-spacing: .6px; text-transform: uppercase; color: var(--accent1); text-shadow: 0 2px 0 #000a; margin-bottom: 10px; }
+  .pj3d-msg { font-size: clamp(.9rem, 3.8vw, 1rem); line-height: 1.5; color: var(--text); word-break: break-word; }
+  .pj3d-msg b { color: var(--accent1); }
+  .pj3d-input { width: 100%; margin-top: 14px; padding: 12px 14px; border-radius: 12px; font-size: 1rem; background: var(--input-bg); color: var(--text); border: 1.5px solid var(--border); box-shadow: inset 0 3px 6px rgba(0,0,0,.5); }
+  .pj3d-botoes { display: flex; gap: 12px; margin-top: 22px; }
+  .pj3d-btn {
+    flex: 1; min-height: 48px; padding: 12px 10px; border: none; border-radius: 14px; cursor: pointer;
+    font-family: 'Exo 2', sans-serif; font-weight: 800; font-size: .95rem; letter-spacing: .3px;
+    transition: transform .08s, box-shadow .08s, filter .15s; -webkit-tap-highlight-color: transparent;
+  }
+  .pj3d-btn:hover { filter: brightness(1.08); }
+  .pj3d-btn.cancelar { background: linear-gradient(180deg, #4a3a22, #33260f); color: var(--text); border: 1px solid var(--border); box-shadow: inset 0 2px 0 rgba(255,255,255,.12), 0 5px 0 #120c05, 0 8px 14px rgba(0,0,0,.45); }
+  .pj3d-btn.ok { background: linear-gradient(180deg, color-mix(in srgb, var(--pj3d-cor) 85%, #fff), var(--pj3d-cor)); color: #fff; text-shadow: 0 1px 0 #0006; box-shadow: inset 0 2px 0 rgba(255,255,255,.35), 0 5px 0 color-mix(in srgb, var(--pj3d-cor) 45%, #000), 0 8px 14px rgba(0,0,0,.45); }
+  .pj3d-balao.tipo-info .pj3d-btn.ok { color: #0d1117; text-shadow: none; }
+  .pj3d-btn:active { transform: translateY(4px); }
+  .pj3d-btn.cancelar:active { box-shadow: inset 0 2px 0 rgba(255,255,255,.12), 0 1px 0 #120c05, 0 3px 6px rgba(0,0,0,.45); }
+  .pj3d-btn.ok:active { box-shadow: inset 0 2px 0 rgba(255,255,255,.35), 0 1px 0 #000, 0 3px 6px rgba(0,0,0,.45); }
+  .pj3d-btn:focus-visible { outline: 3px solid var(--accent1); outline-offset: 2px; }
+  @media (max-width: 340px) { .pj3d-botoes { flex-direction: column-reverse; } }
+  @media (max-height: 480px) { .pj3d-balao { padding-top: 44px; } .pj3d-botoes { margin-top: 14px; } }
+  @media (prefers-reduced-motion: reduce) { .pj3d-balao, .pj3d-overlay { transition: none; } .pj3d-overlay.show .pj3d-balao { animation: none; } }
 </style>
 </head>
 <body>
@@ -1216,6 +1281,20 @@
 
 <div class="toast" id="toast"></div>
 
+<div class="pj3d-overlay" id="pj3dOverlay" aria-hidden="true">
+  <div class="pj3d-balao" id="pj3dBalao" role="alertdialog" aria-modal="true" aria-labelledby="pj3dTitulo" aria-describedby="pj3dMsg">
+    <div class="pj3d-icone" id="pj3dIcone">🗑️</div>
+    <div class="pj3d-titulo" id="pj3dTitulo">Confirmar</div>
+    <div class="pj3d-msg" id="pj3dMsg"></div>
+    <input type="text" class="pj3d-input" id="pj3dInput" style="display:none" autocomplete="off">
+    <div class="pj3d-botoes">
+      <button type="button" class="pj3d-btn cancelar" id="pj3dCancelar">Cancelar</button>
+      <button type="button" class="pj3d-btn ok" id="pj3dOk">OK</button>
+    </div>
+  </div>
+</div>
+
+
 <script>
 /* ════════════════════════════════════════════════════════════
    PWA — Service Worker + botão "Instalar App"
@@ -1282,6 +1361,69 @@
 function gerarId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 function escHtml(s) { return String(s || '').replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function sortAlpha(arr) { return arr.slice().sort(function (a, b) { return a.nome.localeCompare(b.nome, 'pt-BR'); }); }
+
+/* ════════════════════════════════════════════════════════════
+   Balão 3D — pjConfirm / pjPrompt (substituem confirm()/prompt())
+   pjConfirm({titulo, mensagem, destaque, icone, tipo, ok, cancelar}) → Promise<boolean>
+   pjPrompt({titulo, mensagem, valor, ...}) → Promise<string|null>
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  var ov = document.getElementById('pj3dOverlay'), balao = document.getElementById('pj3dBalao');
+  var elIcone = document.getElementById('pj3dIcone'), elTitulo = document.getElementById('pj3dTitulo');
+  var elMsg = document.getElementById('pj3dMsg'), elInput = document.getElementById('pj3dInput');
+  var btnOk = document.getElementById('pj3dOk'), btnCancel = document.getElementById('pj3dCancelar');
+  var resolver = null, comInput = false, ultimoFoco = null;
+  var CORES = { perigo: 'var(--danger)', info: 'var(--accent1)', sucesso: 'var(--accent2)' };
+
+  function esc(t) { return String(t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  function fechar(valor) {
+    if (!resolver) return;
+    var r = resolver; resolver = null;
+    ov.classList.remove('show'); ov.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    if (ultimoFoco && ultimoFoco.focus) { try { ultimoFoco.focus(); } catch (e) {} }
+    r(valor);
+  }
+
+  function abrir(o, input) {
+    if (resolver) fechar(input ? null : false);
+    return new Promise(function (resolve) {
+      resolver = resolve; comInput = !!input; ultimoFoco = document.activeElement;
+      var tipo = o.tipo || 'perigo';
+      balao.style.setProperty('--pj3d-cor', CORES[tipo] || CORES.perigo);
+      balao.className = 'pj3d-balao tipo-' + tipo;
+      elIcone.textContent = o.icone || (tipo === 'perigo' ? '🗑️' : tipo === 'sucesso' ? '✅' : '✏️');
+      elTitulo.textContent = o.titulo || 'Confirmar';
+      elMsg.innerHTML = esc(o.mensagem || '') + (o.destaque ? '<br><b>' + esc(o.destaque) + '</b>' : '');
+      elInput.style.display = input ? 'block' : 'none';
+      elInput.value = input ? (o.valor || '') : '';
+      btnOk.textContent = o.ok || (tipo === 'perigo' ? 'Remover' : 'OK');
+      btnCancel.textContent = o.cancelar || 'Cancelar';
+      ov.classList.add('show'); ov.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      setTimeout(function () { (input ? elInput : btnCancel).focus(); if (input) elInput.select(); }, 60);
+    });
+  }
+
+  window.pjConfirm = function (o) { return abrir(o || {}, false); };
+  window.pjPrompt = function (o) { return abrir(o || {}, true); };
+
+  btnOk.addEventListener('click', function () { fechar(comInput ? elInput.value : true); });
+  btnCancel.addEventListener('click', function () { fechar(comInput ? null : false); });
+  ov.addEventListener('click', function (e) { if (e.target === ov) fechar(comInput ? null : false); });
+  document.addEventListener('keydown', function (e) {
+    if (!resolver) return;
+    if (e.key === 'Escape') { e.preventDefault(); fechar(comInput ? null : false); }
+    else if (e.key === 'Enter' && comInput && e.target === elInput) { e.preventDefault(); fechar(elInput.value); }
+    else if (e.key === 'Tab') {
+      var f = [elInput, btnCancel, btnOk].filter(function (x) { return x.offsetParent !== null; });
+      var i = f.indexOf(document.activeElement);
+      e.preventDefault();
+      f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
+    }
+  });
+})();
 
 var toastEl = document.getElementById('toast');
 var toastTimer;
@@ -1978,11 +2120,11 @@ refreshTodosOsSelects();
       showToast('✅ ' + opts.label + ' adicionado.', 'success');
     }
 
-    function remove(id) {
+    async function remove(id) {
       var itens = opts.getItems();
       var item = itens.find(function (i) { return i.id === id; });
       if (!item) return;
-      if (!confirm('Remover "' + item.nome + '"?')) return;
+      if (!(await pjConfirm({ titulo: 'Remover ' + opts.label, mensagem: 'Deseja remover', destaque: item.nome + '?', ok: 'Remover' }))) return;
       opts.setItems(itens.filter(function (i) { return i.id !== id; }));
       render();
       opts.onChange();
@@ -2073,10 +2215,10 @@ refreshTodosOsSelects();
     showToast('✅ Motivo adicionado.', 'success');
   }
 
-  function editMotivo(id) {
+  async function editMotivo(id) {
     var item = motivos.find(function (m) { return m.id === id; });
     if (!item) return;
-    var novoNome = prompt('Editar motivo:', item.nome);
+    var novoNome = await pjPrompt({ titulo: 'Editar motivo', mensagem: 'Altere o nome do motivo:', valor: item.nome, tipo: 'info', icone: '✏️', ok: 'Salvar' });
     if (novoNome === null) return;
     novoNome = novoNome.trim();
     if (!novoNome) return;
@@ -2090,10 +2232,10 @@ refreshTodosOsSelects();
     showToast('✅ Motivo atualizado.', 'success');
   }
 
-  function removeMotivo(id) {
+  async function removeMotivo(id) {
     var item = motivos.find(function (m) { return m.id === id; });
     if (!item) return;
-    if (!confirm('Remover o motivo "' + item.nome + '"?')) return;
+    if (!(await pjConfirm({ titulo: 'Remover motivo', mensagem: 'Deseja remover o motivo', destaque: item.nome + '?', ok: 'Remover' }))) return;
     motivos = motivos.filter(function (m) { return m.id !== id; });
     saveStorage(LS_MOTIVOS, motivos);
     renderMotivos();
@@ -2138,8 +2280,8 @@ refreshTodosOsSelects();
      para a nuvem, restaurando os dados corretos em todos os aparelhos. */
   var btnReconstruir = document.getElementById('btnReconstruirCadastros');
   if (btnReconstruir) {
-    btnReconstruir.addEventListener('click', function () {
-      if (!confirm('Isso vai vasculhar todos os lançamentos do Histórico e recadastrar automaticamente os nomes de Colaboradores, Postos e Motivos encontrados (sem apagar os que já existem). Continuar?')) return;
+    btnReconstruir.addEventListener('click', async function () {
+      if (!(await pjConfirm({ titulo: 'Reconstruir cadastros', icone: '🔄', tipo: 'info', mensagem: 'Isso vai vasculhar todos os lançamentos do Histórico e recadastrar automaticamente os nomes de Colaboradores, Postos e Motivos encontrados (sem apagar os que já existem). Continuar?', ok: 'Continuar' }))) return;
 
       var fts = loadStorage('ft_lancamentos');
       var bicos = loadStorage('ft_bicos');
@@ -2415,12 +2557,12 @@ refreshTodosOsSelects();
 
   window.renderHistoricoTab = render;
 
-  function excluirLancamento(tipo, id) {
+  async function excluirLancamento(tipo, id) {
     var chave = tipo === 'ft' ? 'ft_lancamentos' : 'ft_bicos';
     var arr = loadStorage(chave);
     var item = arr.find(function (x) { return x.id === id; });
     var nomeItem = item ? (item.substitutoNome || item.colaboradorNome || '') : '';
-    if (!confirm('Excluir definitivamente o lançamento' + (nomeItem ? ' de "' + nomeItem + '"' : '') + '? Essa ação não pode ser desfeita.')) return;
+    if (!(await pjConfirm({ titulo: 'Excluir lançamento', mensagem: 'Excluir definitivamente o lançamento' + (nomeItem ? ' de' : '') + '?', destaque: nomeItem || '', ok: 'Excluir' }))) return;
     var novoArr = arr.filter(function (x) { return x.id !== id; });
     saveStorage(chave, novoArr);
     showToast('🗑️ Lançamento excluído.', 'success');
@@ -3715,7 +3857,7 @@ var AlertasModule = (function () {
 
   function encontrarPosto(id) { return postosMonitorados.find(function (p) { return p.id === id; }); }
 
-  document.getElementById('listaPostosMonitorados').addEventListener('click', function (e) {
+  document.getElementById('listaPostosMonitorados').addEventListener('click', async function (e) {
     var card = e.target.closest('.posto-monitor-card');
     if (!card) return;
     var p = encontrarPosto(card.dataset.id);
@@ -3728,7 +3870,7 @@ var AlertasModule = (function () {
       else if (acao === 'noite') p.ativoNoite = !p.ativoNoite;
       else if (acao === 'ativo') p.ativo = !p.ativo;
       else if (acao === 'remover') {
-        if (!confirm('Remover o posto "' + p.nome + '" do monitoramento?')) return;
+        if (!(await pjConfirm({ titulo: 'Remover posto', mensagem: 'Remover do monitoramento o posto', destaque: p.nome + '?', ok: 'Remover' }))) return;
         postosMonitorados = postosMonitorados.filter(function (x) { return x.id !== p.id; });
       }
       savePostos(); renderPostosMonitorados(); renderInfoBox(); popularSelectEscala();
@@ -4173,7 +4315,7 @@ var LembretesModule = (function () {
     }).join('');
   }
 
-  document.getElementById('listaLembretes').addEventListener('click', function (e) {
+  document.getElementById('listaLembretes').addEventListener('click', async function (e) {
     var card = e.target.closest('.lembrete-card');
     if (!card) return;
     var l = encontrarLembrete(card.dataset.id);
@@ -4186,7 +4328,7 @@ var LembretesModule = (function () {
       renderLembretes();
       showToast('✅ Lembrete concluído.', 'success');
     } else if (btn.dataset.acao === 'remover') {
-      if (!confirm('Remover o lembrete "' + l.servico + '"?')) return;
+      if (!(await pjConfirm({ titulo: 'Remover lembrete', mensagem: 'Deseja remover o lembrete', destaque: l.servico + '?', ok: 'Remover' }))) return;
       lembretes = lembretes.filter(function (x) { return x.id !== l.id; });
       saveLembretes();
       renderLembretes();
