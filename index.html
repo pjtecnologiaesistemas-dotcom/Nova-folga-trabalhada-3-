@@ -100,25 +100,39 @@
     width: 40px; height: 40px; border-radius: 11px; border: 1.5px solid var(--border);
     background: rgba(255,255,255,.04); color: var(--accent1); font-size: 1.3rem;
     display: flex; align-items: center; justify-content: center; cursor: pointer;
-    transition: border-color .2s, background .2s;
+    transition: border-color .2s, background .2s, transform .35s cubic-bezier(.22,1.2,.36,1), box-shadow .15s;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 3px 0 rgba(0,0,0,.5), 0 6px 12px rgba(0,0,0,.4);
   }
   #railToggle:hover, #railToggle.open { border-color: var(--accent1); background: rgba(247,183,49,.12); }
+  #railToggle.open { transform: rotate(90deg) scale(1.05); }
+  #railToggle:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.5); }
 
   #railMenu {
     position: fixed; top: 0; right: 0; bottom: 0; z-index: 9650;
-    width: 0; background: linear-gradient(180deg, #2c2213 0%, #1c150c 100%);
-    border-left: none; box-shadow: none;
-    display: flex; flex-direction: column; overflow: hidden;
-    padding-top: 64px;
-    transition: width .26s ease;
+    width: min(84vw, 330px);
+    background:
+      linear-gradient(90deg, rgba(255,255,255,.05) 0, transparent 14%),
+      linear-gradient(180deg, #34281a 0%, #231a0e 45%, #1c150c 100%);
+    border-left: 2px solid var(--accent1);
+    border-radius: 22px 0 0 22px;
+    box-shadow: inset 2px 0 0 rgba(255,255,255,.12), inset 0 0 40px rgba(0,0,0,.35), -10px 0 40px rgba(0,0,0,.65), -2px 0 0 rgba(247,183,49,.35);
+    display: flex; flex-direction: column; overflow-x: hidden; overflow-y: auto;
+    overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    padding-top: max(64px, calc(env(safe-area-inset-top) + 56px)); padding-bottom: env(safe-area-inset-bottom);
+    transform-origin: 100% 50%;
+    transform: perspective(1100px) translateX(105%) rotateY(-62deg) scale(.94);
+    opacity: 0; visibility: hidden;
+    transition: transform .5s cubic-bezier(.22,1.2,.36,1), opacity .3s ease, visibility 0s linear .5s;
+    will-change: transform;
   }
   #railMenu.expanded {
-    width: min(78vw, 300px); overflow-y: auto;
-    border-left: 2px solid var(--accent1); box-shadow: -4px 0 24px rgba(0,0,0,.45);
+    transform: perspective(1100px) translateX(0) rotateY(0) scale(1);
+    opacity: 1; visibility: visible;
+    transition: transform .5s cubic-bezier(.22,1.2,.36,1), opacity .25s ease, visibility 0s;
   }
+  #railMenu.arrastando { transition: none; }
 
-  .rail-items { display: none; flex-direction: column; flex-shrink: 0; }
-  #railMenu.expanded .rail-items { display: flex; }
+  .rail-items { display: flex; flex-direction: column; flex-shrink: 0; padding: 4px 10px; gap: 6px; transform-style: preserve-3d; }
   .rail-item {
     display: flex; align-items: center; gap: 16px; width: 100%; border: none;
     background: transparent; cursor: pointer; padding: 13px 17px; text-align: left;
@@ -127,24 +141,49 @@
     white-space: nowrap; transition: background .2s, color .2s, border-color .2s;
     flex: 0 0 auto; min-width: 0;
   }
-  .rail-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
-  .rail-item.active {
-    background: linear-gradient(270deg, rgba(247,183,49,.18) 0%, transparent 100%);
-    color: var(--accent1); border-right-color: var(--accent1);
+  .rail-item {
+    border-radius: 14px; border-right: none; border: 1px solid rgba(255,255,255,.05);
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 4px 0 rgba(0,0,0,.45), 0 8px 14px rgba(0,0,0,.35);
+    opacity: 0; transform: translateX(46px) translateZ(0) rotateY(-28deg);
+    transition: transform .45s cubic-bezier(.22,1.2,.36,1) calc(var(--i, 0) * 55ms + .12s), opacity .3s ease calc(var(--i, 0) * 55ms + .12s), box-shadow .12s, background .2s, color .2s;
+    -webkit-tap-highlight-color: transparent;
   }
+  #railMenu.expanded .rail-item { opacity: 1; transform: translateX(0) rotateY(0); }
+  .rail-item:hover { background: linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.03)); color: var(--text); }
+  .rail-item:active, #railMenu.expanded .rail-item:active {
+    transform: translateY(3px) scale(.985); transition-delay: 0s;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 1px 0 rgba(0,0,0,.45), 0 3px 6px rgba(0,0,0,.35);
+  }
+  .rail-item.active {
+    background: linear-gradient(180deg, rgba(247,183,49,.32), rgba(247,183,49,.10));
+    color: var(--accent1); border-color: rgba(247,183,49,.55);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 4px 0 #7a5a12, 0 8px 16px rgba(247,183,49,.18);
+  }
+  .rail-icon { filter: drop-shadow(0 3px 3px rgba(0,0,0,.5)); }
+  .rail-item:focus-visible { outline: 2px solid var(--accent1); outline-offset: 2px; }
+  .rail-items .rail-item:nth-child(1) { --i: 0; } .rail-items .rail-item:nth-child(2) { --i: 1; }
+  .rail-items .rail-item:nth-child(3) { --i: 2; } .rail-items .rail-item:nth-child(4) { --i: 3; }
+  .rail-items .rail-item:nth-child(5) { --i: 4; } .rail-items .rail-item:nth-child(6) { --i: 5; }
+  .rail-items .rail-item:nth-child(7) { --i: 6; }
+  #btnInstalarApp { --i: 7; margin: 6px 10px 0; width: calc(100% - 20px); }
   .rail-item.disabled { opacity: .4; cursor: default; pointer-events: none; }
   .rail-icon { font-size: 1.25rem; line-height: 1; flex-shrink: 0; width: 22px; text-align: center; }
   .rail-label { white-space: nowrap; }
 
-  .rail-divider { display: none; height: 1px; background: var(--border); margin: 8px 14px; flex-shrink: 0; }
-  #railMenu.expanded .rail-divider { display: block; }
+  .rail-divider { display: block; height: 2px; background: linear-gradient(90deg, transparent, var(--accent1), transparent); opacity: .35; margin: 10px 14px; flex-shrink: 0; }
 
   .rail-footer-logo {
-    display: none; flex-direction: column; align-items: center;
-    margin: 18px 14px 20px; padding: 16px 10px 14px; border-radius: 12px;
-    background: #07111f; border: 1px solid rgba(0,200,248,.18); flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center;
+    margin: 14px 14px 20px; padding: 16px 10px 14px; border-radius: 16px;
+    background: linear-gradient(160deg, #0b1b30, #07111f); border: 1px solid rgba(0,200,248,.28); flex-shrink: 0;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 6px 0 rgba(0,0,0,.45), 0 14px 24px rgba(0,0,0,.5), 0 0 24px rgba(0,200,248,.12);
+    opacity: 0; transform: translateY(26px) rotateX(35deg) scale(.9); transform-origin: 50% 100%;
+    transition: transform .55s cubic-bezier(.22,1.2,.36,1) .5s, opacity .35s ease .5s;
   }
-  #railMenu.expanded .rail-footer-logo { display: flex; }
+  #railMenu.expanded .rail-footer-logo { opacity: 1; transform: translateY(0) rotateX(0) scale(1); }
+  #railMenu.expanded .rail-footer-hex { animation: railHexFloat 3.6s ease-in-out .9s infinite; }
+  @keyframes railHexFloat { 0%,100% { transform: translateY(0) rotateY(0); } 50% { transform: translateY(-4px) rotateY(18deg); } }
   .rail-footer-hex { position: relative; width: 40px; height: 44px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; }
   .rail-footer-hex svg { position: absolute; inset: 0; width: 100%; height: 100%; }
   .rail-footer-mono {
@@ -169,10 +208,19 @@
   .rail-footer-tagline strong { color: #f0a500; opacity: 1; }
 
   #railBackdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 9640;
-    opacity: 0; pointer-events: none; transition: opacity .25s;
+    position: fixed; inset: 0; z-index: 9640;
+    background: radial-gradient(circle at 100% 40%, rgba(0,0,0,.35), rgba(0,0,0,.72));
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+    opacity: 0; pointer-events: none; transition: opacity .3s;
   }
   #railBackdrop.show { opacity: 1; pointer-events: all; }
+
+  @media (max-height: 520px) { .rail-item { padding-top: 9px; padding-bottom: 9px; } .rail-footer-logo { margin-top: 8px; } }
+  @media (min-width: 768px) { #railMenu { width: 340px; } }
+  @media (prefers-reduced-motion: reduce) {
+    #railMenu, #railMenu.expanded, .rail-item, .rail-footer-logo { transition: opacity .2s !important; transform: none !important; }
+    #railMenu.expanded .rail-footer-hex { animation: none; }
+  }
 
   /* ── Tabs ── */
   .tabs-wrapper { max-width: 480px; margin: 8px auto 0; padding: 0 12px; width: 100%; }
@@ -1685,13 +1733,16 @@ refreshTodosOsSelects();
   var rail = document.getElementById('railMenu');
   var backdrop = document.getElementById('railBackdrop');
 
+  rail.setAttribute('aria-hidden', 'true');
   function openRail() {
+    rail.setAttribute('aria-hidden', 'false');
     rail.classList.add('expanded');
     backdrop.classList.add('show');
     toggle.classList.add('open');
     toggle.setAttribute('aria-expanded', 'true');
   }
   function closeRail() {
+    rail.setAttribute('aria-hidden', 'true');
     rail.classList.remove('expanded');
     backdrop.classList.remove('show');
     toggle.classList.remove('open');
@@ -1701,6 +1752,29 @@ refreshTodosOsSelects();
     rail.classList.contains('expanded') ? closeRail() : openRail();
   });
   backdrop.addEventListener('click', closeRail);
+
+  /* Arrastar o menu para a direita fecha (efeito 3D acompanha o dedo) */
+  var sx = 0, sy = 0, dx = 0, arrastando = false, decidido = false;
+  rail.addEventListener('touchstart', function (e) {
+    if (!rail.classList.contains('expanded')) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY; dx = 0; arrastando = false; decidido = false;
+  }, { passive: true });
+  rail.addEventListener('touchmove', function (e) {
+    if (!rail.classList.contains('expanded')) return;
+    var mx = e.touches[0].clientX - sx, my = e.touches[0].clientY - sy;
+    if (!decidido && (Math.abs(mx) > 8 || Math.abs(my) > 8)) { decidido = true; arrastando = mx > 0 && Math.abs(mx) > Math.abs(my); }
+    if (!arrastando) return;
+    dx = Math.max(0, mx);
+    var w = rail.offsetWidth || 300, pct = Math.min(1, dx / w);
+    rail.classList.add('arrastando');
+    rail.style.transform = 'perspective(1100px) translateX(' + dx + 'px) rotateY(' + (-62 * pct) + 'deg) scale(' + (1 - .06 * pct) + ')';
+  }, { passive: true });
+  rail.addEventListener('touchend', function () {
+    if (!arrastando) return;
+    rail.classList.remove('arrastando'); rail.style.transform = '';
+    if (dx > (rail.offsetWidth || 300) * 0.28) closeRail();
+    arrastando = false; dx = 0;
+  });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeRail(); });
 
   var tabBtns = rail.querySelectorAll('.tab-btn[data-tab]');
