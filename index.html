@@ -371,6 +371,9 @@
   /* ── Cadastros ── */
   .cadastro-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 18px; box-shadow: var(--shadow); margin-bottom: 16px; }
   .cadastro-section h2 { font-family: 'Exo 2', sans-serif; font-size: .9rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .funcao-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .chip-funcao { padding: 8px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--input-bg); color: var(--text); font-family: 'Exo 2', sans-serif; font-weight: 700; font-size: .78rem; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+  .chip-funcao.sel { border-color: var(--accent2); background: rgba(38,222,129,.14); color: var(--accent2); }
   .cadastro-badge { margin-left: auto; background: rgba(139,151,176,.18); color: var(--muted); font-size: .65rem; font-weight: 800; padding: 2px 9px; border-radius: 12px; }
 
   .add-row { display: flex; gap: 8px; margin-bottom: 16px; }
@@ -845,7 +848,7 @@
         <div class="section-sep">Colaboradores</div>
 
         <div class="field">
-          <div class="field-label col-green"><span class="dot bg-green"></span>&#x1F464; Quem está indo (Porteiro/Colaborador)</div>
+          <div class="field-label col-green"><span class="dot bg-green"></span>&#x1F464; Quem está indo (<span class="rotulo-funcao">Porteiro/Colaborador</span>)</div>
           <select id="substituto" required><option value="">-- Selecione --</option></select>
         </div>
 
@@ -1019,6 +1022,23 @@
         <input type="text" id="buscaMotivo" class="list-search" placeholder="Buscar motivo…">
       </div>
       <div class="list-items collapsed" id="listaMotivos"><p class="empty-state">Nenhum motivo cadastrado.</p></div>
+    </div>
+
+    <div class="cadastro-section">
+      <h2 class="col-green">&#x1F3F7;&#xFE0F; Função de quem está indo</h2>
+      <p style="font-size:.76rem;color:var(--muted);margin:-8px 0 14px;">Texto exibido no campo "Quem está indo (…)" da Nova FT e da edição de lançamentos. Toque em uma opção ou digite a sua.</p>
+      <div class="funcao-chips" id="funcaoChips">
+        <button type="button" class="chip-funcao" data-v="Vigilante">Vigilante</button>
+        <button type="button" class="chip-funcao" data-v="Controlador de acesso">Controlador de acesso</button>
+        <button type="button" class="chip-funcao" data-v="Porteiro">Porteiro</button>
+        <button type="button" class="chip-funcao" data-v="Colaborador">Colaborador</button>
+        <button type="button" class="chip-funcao" data-v="Porteiro/Colaborador">Porteiro/Colaborador</button>
+      </div>
+      <div class="add-row">
+        <input type="text" id="inputFuncaoRotulo" placeholder="Ex: Vigilante / Controlador de acesso" maxlength="40">
+        <button class="btn-add" id="btnSalvarFuncao">Salvar</button>
+      </div>
+      <p style="font-size:.76rem;color:var(--muted);margin-top:10px;">Prévia: <b class="col-green">Quem está indo (<span class="rotulo-funcao">Porteiro/Colaborador</span>)</b></p>
     </div>
   </div>
 
@@ -1254,7 +1274,7 @@
         <select id="editFtAusente"><option value="">-- Selecione --</option></select>
       </div>
       <div class="field">
-        <div class="field-label col-green"><span class="dot bg-green"></span>&#x1F464; Quem está indo (Porteiro/Colaborador)</div>
+        <div class="field-label col-green"><span class="dot bg-green"></span>&#x1F464; Quem está indo (<span class="rotulo-funcao">Porteiro/Colaborador</span>)</div>
         <select id="editFtSubstituto"><option value="">-- Selecione --</option></select>
       </div>
       <div class="field">
@@ -1514,7 +1534,7 @@ var FTCloud = (function () {
   };
 
   var COLECAO = 'ft_app_data';
-  var CHAVES_SINCRONIZADAS = ['ft_postos', 'ft_colaboradores', 'ft_motivos', 'ft_lancamentos', 'ft_bicos', 'ft_horarios_extra', 'ft_alertas_postos_v2'];
+  var CHAVES_SINCRONIZADAS = ['ft_postos', 'ft_colaboradores', 'ft_motivos', 'ft_lancamentos', 'ft_bicos', 'ft_horarios_extra', 'ft_alertas_postos_v2', 'ft_funcao_rotulo'];
 
   var db = null;
   var pronto = false;
@@ -1612,6 +1632,7 @@ var FTCloud = (function () {
       refreshMotivoSelect();
       if (typeof window.renderCadastroMotivos === 'function') window.renderCadastroMotivos();
     }
+    if (chave === 'ft_funcao_rotulo' && typeof window.aplicarRotuloFuncao === 'function') window.aplicarRotuloFuncao();
     if (chave === 'ft_alertas_postos_v2' && window.AlertasModule && typeof window.AlertasModule.aplicarRemoto === 'function') {
       window.AlertasModule.aplicarRemoto(valor);
     }
@@ -1724,6 +1745,39 @@ function refreshTodosOsSelects() {
   refreshMotivoSelect();
 }
 refreshTodosOsSelects();
+
+/* ════════════════════════════════════════════════════════════
+   MÓDULO — Função de quem está indo (rótulo configurável)
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  var CHAVE = 'ft_funcao_rotulo', PADRAO = 'Porteiro/Colaborador';
+  var input = document.getElementById('inputFuncaoRotulo');
+  var chips = document.querySelectorAll('#funcaoChips .chip-funcao');
+
+  function atual() {
+    var v = loadStorage(CHAVE);
+    var t = Array.isArray(v) && typeof v[0] === 'string' ? v[0].trim() : '';
+    return t || PADRAO;
+  }
+  function aplicar() {
+    var t = atual();
+    document.querySelectorAll('.rotulo-funcao').forEach(function (el) { el.textContent = t; });
+    if (input && document.activeElement !== input) input.value = t;
+    chips.forEach(function (c) { c.classList.toggle('sel', c.dataset.v === t); });
+  }
+  window.aplicarRotuloFuncao = aplicar;
+
+  chips.forEach(function (c) { c.addEventListener('click', function () { input.value = c.dataset.v; chips.forEach(function (x) { x.classList.toggle('sel', x === c); }); }); });
+  document.getElementById('btnSalvarFuncao').addEventListener('click', function () {
+    var t = input.value.trim();
+    if (!t) { showToast('⚠️ Digite o texto que deve aparecer.', 'error'); return; }
+    saveStorage(CHAVE, [t]);
+    aplicar();
+    showToast('✅ Função atualizada: ' + t, 'success');
+  });
+  input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btnSalvarFuncao').click(); } });
+  aplicar();
+}());
 
 /* ════════════════════════════════════════════════════════════
    MÓDULO — Rail menu (menu lateral)
@@ -3104,14 +3158,14 @@ refreshTodosOsSelects();
 
     /* Tabela de lançamentos */
     doc.autoTable({
-      head: [['Data', 'Posto', 'Tipo', 'Motivo / Dias', 'Horário', 'Valor']],
+      head: [['Data', 'Posto', 'Tipo', 'Motivo / Dias', 'Colab. ausente', 'Horário', 'Valor']],
       body: linhas,
       startY: 132,
       margin: { left: marginX, right: marginX },
       styles: { fontSize: 8.5, cellPadding: 6, overflow: 'linebreak', textColor: [30, 30, 30] },
       headStyles: { fillColor: [26, 26, 26], textColor: [255, 255, 255], fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [250, 250, 250] },
-      columnStyles: { 5: { halign: 'right', fontStyle: 'bold' } }
+      columnStyles: { 4: { textColor: [190, 40, 50] }, 5: { halign: 'center' }, 6: { halign: 'right', fontStyle: 'bold', cellWidth: 62 } }
     });
 
     var afterTableY = doc.lastAutoTable.finalY + 22;
